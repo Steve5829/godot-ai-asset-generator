@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 BASE_DIR = Path(__file__).resolve().parent
 for env_path in (
     BASE_DIR / ".env",
+    BASE_DIR.parent / ".env",
     BASE_DIR / "vibe-agent-demo" / ".env",
     BASE_DIR / "VibeAgentDemo" / ".env",
 ):
@@ -23,7 +24,28 @@ for env_path in (
 
 app = FastAPI()
 
-GODOT_PROJECT_DIR = BASE_DIR / "vibe-agent-demo"
+
+def _detect_godot_project_dir() -> Path:
+    override = os.getenv("GODOT_PROJECT_DIR")
+    if override:
+        configured = Path(override)
+        if not configured.is_absolute():
+            configured = (BASE_DIR / configured).resolve()
+        return configured
+
+    candidates = (
+        BASE_DIR.parent,
+        BASE_DIR / "vibe-agent-demo",
+        BASE_DIR / "VibeAgentDemo",
+    )
+    for candidate in candidates:
+        if (candidate / "project.godot").exists():
+            return candidate.resolve()
+
+    return BASE_DIR.parent.resolve()
+
+
+GODOT_PROJECT_DIR = _detect_godot_project_dir()
 PIXELLAB_API_KEY = os.getenv("PIXELLAB_API_KEY") or os.getenv("PIXELLAB_SECRET")
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
