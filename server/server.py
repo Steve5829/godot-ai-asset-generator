@@ -53,11 +53,19 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 RESAMPLING = getattr(Image, "Resampling", Image)
+SUPPORTED_STYLE_TARGETS = {
+    "core_keeper",
+    "terraria",
+    "minecraft",
+}
+SUPPORTED_GENERATION_PROVIDERS = {"pixellab"}
 
 
 class GenerateAssetRequest(BaseModel):
     prompt: str = Field(min_length=1)
     folder_path: str = "res://"
+    style_target: str = "core_keeper"
+    provider: str = "pixellab"
 
 
 class ModifyAssetRequest(BaseModel):
@@ -97,6 +105,27 @@ def _clamp_size(value: int, default: int) -> int:
     except (TypeError, ValueError):
         parsed = default
     return max(16, min(400, parsed))
+
+
+def _normalize_style_target(style_target: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(style_target or "").strip().lower()).strip("_")
+    if normalized in SUPPORTED_STYLE_TARGETS:
+        return normalized
+    return "core_keeper"
+
+
+def _normalize_generation_provider(provider: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(provider or "").strip().lower()).strip("_")
+    if normalized in SUPPORTED_GENERATION_PROVIDERS:
+        return normalized
+    return "pixellab"
+
+
+def _provider_constraints(provider: str) -> str:
+    normalized_provider = _normalize_generation_provider(provider)
+    if normalized_provider == "pixellab":
+        return "PixelLab provider. Prefer native-looking pixel art, crisp silhouettes, and no blurry edges."
+    return "No provider-specific constraints supplied."
 
 
 def _project_root() -> Path:
@@ -158,7 +187,7 @@ def _extract_json_object(text: str) -> Dict[str, Any]:
 
 def _chat_json(system_prompt: str, user_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if not OPENAI_API_KEY:
-        return None
+        raise ValueError("OPENAI_API_KEY is not configured")
 
     response = requests.post(
         OPENAI_BASE_URL + "/chat/completions",
@@ -219,30 +248,54 @@ def _parse_prompt_dimensions(prompt: str, default_width: int, default_height: in
     return {"width": default_width, "height": default_height}
 
 
-def _plan_generation(prompt: str) -> Dict[str, Any]:
+def _plan_generation(prompt: str, style_target: str, provider: str) -> Dict[str, Any]:
+    normalized_style = _normalize_style_target(style_target)
+    normalized_provider = _normalize_generation_provider(provider)
     fallback_dimensions = _parse_prompt_dimensions(prompt, 128, 128)
     fallback = {
         "description": prompt.strip(),
         "width": fallback_dimensions["width"],
         "height": fallback_dimensions["height"],
-        "filename_stub": _safe_stem(prompt, "generated_asset"),
+        "filename_stub": _safe_stem("%s_%s" % (normalized_style, prompt), "generated_asset"),
         "no_background": True,
+        "style_target": normalized_style,
+        "provider": normalized_provider,
+        "planning_source": "fallback",
+        "planning_note": "Used fallback plan before LLM planning completed.",
     }
 
+    failure_reason = ""
     try:
         plan = _chat_json(
             (
-                "You convert user asset requests into PixelLab generation settings. "
+                "You are an expert technical artist and AI planner for pixel-art asset generation. "
+                "Your job is to translate a user request and a style_target into optimized generation settings "
+                "for the selected provider. Use your own knowledge of the target game's visual language to infer "
+                "useful style cues such as perspective, palette direction, lighting, silhouette clarity, and level of detail. "
+                "Do not rely on backend-supplied hardcoded style phrases. "
                 "Return JSON with description, width, height, filename_stub, and no_background. "
-                "Use pixel art wording when helpful. Width and height must be integers between 16 and 400."
+                "The description should approximate the target style without copying existing game assets verbatim. "
+                "Width and height must be integers between 16 and 400."
             ),
-            {"prompt": prompt, "fallback": fallback},
+            {
+                "user_prompt": prompt,
+                "target_game_style": normalized_style,
+                "provider_constraints": _provider_constraints(normalized_provider),
+                "provider": normalized_provider,
+                "fallback": fallback,
+            },
         )
     except Exception as exc:
         print("Text model generation planning failed:", exc)
+        failure_reason = str(exc)
         plan = None
 
     if not isinstance(plan, dict):
+        fallback["planning_note"] = (
+            "Used fallback plan because LLM planning was unavailable."
+            if not failure_reason
+            else "Used fallback plan because LLM planning failed: %s" % failure_reason
+        )
         return fallback
 
     return {
@@ -251,17 +304,27 @@ def _plan_generation(prompt: str) -> Dict[str, Any]:
         "height": _clamp_size(plan.get("height"), fallback["height"]),
         "filename_stub": _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
         "no_background": bool(plan.get("no_background", True)),
+        "style_target": normalized_style,
+        "provider": normalized_provider,
+        "planning_source": "llm",
+        "planning_note": "Used LLM-generated plan.",
     }
 
 
-def _fallback_generation_plan(prompt: str) -> Dict[str, Any]:
+def _fallback_generation_plan(prompt: str, style_target: str, provider: str) -> Dict[str, Any]:
+    normalized_style = _normalize_style_target(style_target)
+    normalized_provider = _normalize_generation_provider(provider)
     dimensions = _parse_prompt_dimensions(prompt, 128, 128)
     return {
         "description": prompt.strip(),
         "width": dimensions["width"],
         "height": dimensions["height"],
-        "filename_stub": _safe_stem(prompt, "generated_asset"),
+        "filename_stub": _safe_stem("%s_%s" % (normalized_style, prompt), "generated_asset"),
         "no_background": True,
+        "style_target": normalized_style,
+        "provider": normalized_provider,
+        "planning_source": "fallback",
+        "planning_note": "Used fallback generation plan after provider rejected the planned payload.",
     }
 
 
@@ -286,6 +349,18 @@ def _generate_with_pixellab(description: str, width: int, height: int, no_backgr
         raise ValueError("PixelLab API returned an unexpected response")
 
     return _decode_base64_image(payload.get("image"))
+
+
+def _generate_with_provider(provider: str, description: str, width: int, height: int, no_background: bool) -> bytes:
+    normalized_provider = _normalize_generation_provider(provider)
+    if normalized_provider == "pixellab":
+        return _generate_with_pixellab(
+            description=description,
+            width=width,
+            height=height,
+            no_background=no_background,
+        )
+    raise ValueError("Unsupported image generation provider: %s" % provider)
 
 
 def _load_image(path: Path) -> Image.Image:
@@ -562,9 +637,21 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
 
     try:
         target_folder = _resolve_res_path(request.folder_path, expect_directory=True)
-        plan = _plan_generation(request.prompt)
+        style_target = _normalize_style_target(request.style_target)
+        provider = _normalize_generation_provider(request.provider)
+        plan = _plan_generation(request.prompt, style_target, provider)
+        print(
+            "Generation planner source=%s style=%s provider=%s description=%s"
+            % (
+                plan.get("planning_source", "unknown"),
+                plan.get("style_target", style_target),
+                plan.get("provider", provider),
+                plan.get("description", ""),
+            )
+        )
         try:
-            image_bytes = _generate_with_pixellab(
+            image_bytes = _generate_with_provider(
+                provider=plan["provider"],
                 description=plan["description"],
                 width=plan["width"],
                 height=plan["height"],
@@ -574,8 +661,9 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             response = exc.response
             if response is not None and response.status_code == 422:
                 print("PixelLab rejected planned payload:", response.text)
-                fallback_plan = _fallback_generation_plan(request.prompt)
-                image_bytes = _generate_with_pixellab(
+                fallback_plan = _fallback_generation_plan(request.prompt, style_target, provider)
+                image_bytes = _generate_with_provider(
+                    provider=fallback_plan["provider"],
                     description=fallback_plan["description"],
                     width=fallback_plan["width"],
                     height=fallback_plan["height"],

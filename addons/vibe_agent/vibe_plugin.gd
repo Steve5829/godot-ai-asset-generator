@@ -3,6 +3,14 @@ extends EditorPlugin
 
 const BACKEND_URL := "http://127.0.0.1:8000/vibe"
 const IMAGE_EXTENSIONS := ["png", "jpg", "jpeg", "webp"]
+const GENERATION_STYLE_OPTIONS := [
+	{"value": "core_keeper", "label": "Core Keeper-like"},
+	{"value": "terraria", "label": "Terraria-like"},
+	{"value": "minecraft", "label": "Minecraft-like"},
+]
+const GENERATION_PROVIDER_OPTIONS := [
+	{"value": "pixellab", "label": "PixelLab"},
+]
 const ALLOWED_METHODS := {
 	"add_child": false,
 	"queue_free": false,
@@ -63,6 +71,9 @@ var http_request: HTTPRequest
 var prompt_dialog: ConfirmationDialog
 var prompt_summary_label: Label
 var prompt_example_label: Label
+var generation_settings_container: VBoxContainer
+var style_target_select: OptionButton
+var provider_select: OptionButton
 var prompt_input: TextEdit
 
 var filesystem_create_menu
@@ -131,6 +142,28 @@ func _create_prompt_dialog():
 	prompt_example_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(prompt_example_label)
 
+	generation_settings_container = VBoxContainer.new()
+	generation_settings_container.visible = false
+	root.add_child(generation_settings_container)
+
+	var style_label = Label.new()
+	style_label.text = "Style Target"
+	generation_settings_container.add_child(style_label)
+
+	style_target_select = OptionButton.new()
+	style_target_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(style_target_select, GENERATION_STYLE_OPTIONS)
+	generation_settings_container.add_child(style_target_select)
+
+	var provider_label = Label.new()
+	provider_label.text = "Provider"
+	generation_settings_container.add_child(provider_label)
+
+	provider_select = OptionButton.new()
+	provider_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(provider_select, GENERATION_PROVIDER_OPTIONS)
+	generation_settings_container.add_child(provider_select)
+
 	prompt_input = TextEdit.new()
 	prompt_input.custom_minimum_size = Vector2(520, 180)
 	prompt_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -138,6 +171,30 @@ func _create_prompt_dialog():
 	root.add_child(prompt_input)
 
 	get_editor_interface().get_base_control().add_child(prompt_dialog)
+
+
+func _populate_option_button(button: OptionButton, options: Array):
+	button.clear()
+	for option in options:
+		var item_label = String(option.get("label", option.get("value", "")))
+		var item_value = String(option.get("value", item_label))
+		button.add_item(item_label)
+		var item_index = button.item_count - 1
+		button.set_item_metadata(item_index, item_value)
+	if button.item_count > 0:
+		button.select(0)
+
+
+func _selected_option_value(button: OptionButton, fallback: String) -> String:
+	if button == null or button.item_count == 0:
+		return fallback
+	var selected_index = button.get_selected()
+	if selected_index < 0 or selected_index >= button.item_count:
+		return fallback
+	var metadata = button.get_item_metadata(selected_index)
+	if metadata == null:
+		return fallback
+	return String(metadata)
 
 
 func _is_supported_image_path(path: String) -> bool:
@@ -222,8 +279,17 @@ func _open_prompt_dialog(kind: String, summary: String, example: String, confirm
 	prompt_dialog.get_ok_button().text = confirm_text
 	prompt_summary_label.text = summary
 	prompt_example_label.text = example
+	generation_settings_container.visible = kind == "generate"
+	if kind == "generate":
+		if style_target_select.item_count > 0:
+			style_target_select.select(0)
+		if provider_select.item_count > 0:
+			provider_select.select(0)
 	prompt_input.clear()
-	prompt_dialog.popup_centered(Vector2i(560, 320))
+	var popup_size = Vector2i(560, 320)
+	if kind == "generate":
+		popup_size = Vector2i(560, 430)
+	prompt_dialog.popup_centered(popup_size)
 	prompt_input.grab_focus()
 
 
@@ -282,6 +348,8 @@ func _on_prompt_confirmed():
 				{
 					"prompt": prompt,
 					"folder_path": String(active_dialog_context.get("folder_path", "res://")),
+					"style_target": _selected_option_value(style_target_select, "core_keeper"),
+					"provider": _selected_option_value(provider_select, "pixellab"),
 				}
 			)
 		"modify":
