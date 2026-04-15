@@ -23,14 +23,25 @@ This repository now includes a first-pass style modeling baseline for pixel-art 
 
 ## Experiment Script
 
-Use the local manifest generator to produce a structured set of benchmark prompts:
+### Generate prompt manifest only
 
 ```bash
 python3 server/experiment.py --print-prompts
 ```
 
-This writes:
+Writes `server/output/style_benchmark_manifest.json` — useful for reviewing prompts before spending API credits.
 
-- `server/output/style_benchmark_manifest.json`
+### Run the full benchmark (PixelLab)
 
-The manifest is meant to be the baseline for later provider comparisons and prompt-synthesis experiments.
+```bash
+cd server && python3 experiment.py --run
+```
+
+This calls PixelLab for every `(item, style)` combination (9 pairs by default) and produces:
+
+- `server/output/images/{style_key}_{item_key}.png` — one image per pair
+- `server/output/results/style_benchmark_results.json` — structured results with prompt, path, timing, and error notes
+
+Use `--dry-run` instead of `--run` to verify the pipeline without making API calls.
+
+The results JSON is designed for later provider comparisons and automated scoring.
