@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-04-15T02:08:25.114024+00:00",
+  "generated_at": "2026-04-16T03:20:16.003431+00:00",
   "provider": "pixellab",
   "total": 9,
-  "succeeded": 3,
-  "failed": 6,
+  "succeeded": 9,
+  "failed": 0,
   "results": [
     {
       "item_key": "iron_sword",
@@ -13,33 +13,30 @@
       "width": 32,
       "height": 32,
       "output_image_path": "server/output/images/core_keeper_iron_sword.png",
-      "timestamp": "2026-04-15T02:07:16.524341+00:00",
-      "notes": "",
-      "elapsed_seconds": 22.62
+      "timestamp": "2026-04-16T03:20:16.003065+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "iron_sword",
       "style_key": "minecraft",
       "provider": "pixellab",
       "prompt": "Iron Sword, A practical iron sword with a simple guard and readable metallic blade. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Long silhouette, edge readability, and metal highlight control.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/minecraft_iron_sword.png",
-      "timestamp": "2026-04-15T02:07:39.147892+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.46
+      "timestamp": "2026-04-16T03:20:16.003130+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "iron_sword",
       "style_key": "terraria",
       "provider": "pixellab",
       "prompt": "Iron Sword, A practical iron sword with a simple guard and readable metallic blade. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Long silhouette, edge readability, and metal highlight control.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/terraria_iron_sword.png",
-      "timestamp": "2026-04-15T02:07:39.605323+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.51
+      "timestamp": "2026-04-16T03:20:16.003174+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "healing_potion",
@@ -49,33 +46,30 @@
       "width": 32,
       "height": 32,
       "output_image_path": "server/output/images/core_keeper_healing_potion.png",
-      "timestamp": "2026-04-15T02:07:40.117142+00:00",
-      "notes": "",
-      "elapsed_seconds": 21.87
+      "timestamp": "2026-04-16T03:20:16.003216+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "healing_potion",
       "style_key": "minecraft",
       "provider": "pixellab",
       "prompt": "Healing Potion, A small healing potion in a glass vial with vivid liquid inside. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Container silhouette, liquid color separation, and glass readability.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/minecraft_healing_potion.png",
-      "timestamp": "2026-04-15T02:08:01.986583+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.5
+      "timestamp": "2026-04-16T03:20:16.003257+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "healing_potion",
       "style_key": "terraria",
       "provider": "pixellab",
       "prompt": "Healing Potion, A small healing potion in a glass vial with vivid liquid inside. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Container silhouette, liquid color separation, and glass readability.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/terraria_healing_potion.png",
-      "timestamp": "2026-04-15T02:08:02.485897+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.5
+      "timestamp": "2026-04-16T03:20:16.003296+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "crystal_ore",
@@ -85,33 +79,30 @@
       "width": 32,
       "height": 32,
       "output_image_path": "server/output/images/core_keeper_crystal_ore.png",
-      "timestamp": "2026-04-15T02:08:02.985539+00:00",
-      "notes": "",
-      "elapsed_seconds": 21.14
+      "timestamp": "2026-04-16T03:20:16.003335+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "crystal_ore",
       "style_key": "minecraft",
       "provider": "pixellab",
       "prompt": "Crystal Ore, A crystal ore chunk with irregular geometry and visible internal glow. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Glow handling, irregular silhouette, and clustered texture detail.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/minecraft_crystal_ore.png",
-      "timestamp": "2026-04-15T02:08:24.129903+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.46
+      "timestamp": "2026-04-16T03:20:16.003375+00:00",
+      "notes": "dry-run — no API call made"
     },
     {
       "item_key": "crystal_ore",
       "style_key": "terraria",
       "provider": "pixellab",
       "prompt": "Crystal Ore, A crystal ore chunk with irregular geometry and visible internal glow. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Glow handling, irregular silhouette, and clustered texture detail.",
-      "width": 16,
-      "height": 16,
+      "width": 32,
+      "height": 32,
       "output_image_path": "server/output/images/terraria_crystal_ore.png",
-      "timestamp": "2026-04-15T02:08:24.596960+00:00",
-      "notes": "error: 422 Client Error: Unprocessable Entity for url: https://api.pixellab.ai/v1/generate-image-pixflux",
-      "elapsed_seconds": 0.52
+      "timestamp": "2026-04-16T03:20:16.003413+00:00",
+      "notes": "dry-run — no API call made"
     }
   ]
 }
