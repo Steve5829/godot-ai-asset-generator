@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-16T03:20:16.005960+00:00",
+  "generated_at": "2026-04-23T03:29:34.472682+00:00",
   "provider": "pixellab",
   "mode": "spritesheet",
   "sheet_cols": 3,
@@ -14,13 +14,25 @@
       "provider": "pixellab",
       "prompt": "Iron Sword, A practical iron sword with a simple guard and readable metallic blade. Pixel art asset, 32x32 or 48x48, top-down perspective, soft edge separation using darker local colors, soft internal glow and compact shading, muted earthy tones with selective accent colors, stylized pixel art, medium detail density, chunky readable silhouettes with handcrafted texture clusters. Focus on Long silhouette, edge readability, and metal highlight control.",
       "output_image_path": "server/output/images/core_keeper_iron_sword.png",
-      "timestamp": "2026-04-16T03:20:16.005469+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:28:50.837653+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "cell_index": 0,
+        "row": 0,
+        "col": 0,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 13.82
     },
     {
       "item_key": "healing_potion",
@@ -28,13 +40,25 @@
       "provider": "pixellab",
       "prompt": "Healing Potion, A small healing potion in a glass vial with vivid liquid inside. Pixel art asset, 32x32 or 48x48, top-down perspective, soft edge separation using darker local colors, soft internal glow and compact shading, muted earthy tones with selective accent colors, stylized pixel art, medium detail density, chunky readable silhouettes with handcrafted texture clusters. Focus on Container silhouette, liquid color separation, and glass readability.",
       "output_image_path": "server/output/images/core_keeper_healing_potion.png",
-      "timestamp": "2026-04-16T03:20:16.005527+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:28:50.837927+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "cell_index": 1,
+        "row": 0,
+        "col": 1,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 13.82
     },
     {
       "item_key": "crystal_ore",
@@ -42,13 +66,25 @@
       "provider": "pixellab",
       "prompt": "Crystal Ore, A crystal ore chunk with irregular geometry and visible internal glow. Pixel art asset, 32x32 or 48x48, top-down perspective, soft edge separation using darker local colors, soft internal glow and compact shading, muted earthy tones with selective accent colors, stylized pixel art, medium detail density, chunky readable silhouettes with handcrafted texture clusters. Focus on Glow handling, irregular silhouette, and clustered texture detail.",
       "output_image_path": "server/output/images/core_keeper_crystal_ore.png",
-      "timestamp": "2026-04-16T03:20:16.005566+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:28:50.838162+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "cell_index": 2,
+        "row": 0,
+        "col": 2,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/core_keeper_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 13.82
     },
     {
       "item_key": "iron_sword",
@@ -56,13 +92,25 @@
       "provider": "pixellab",
       "prompt": "Iron Sword, A practical iron sword with a simple guard and readable metallic blade. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Long silhouette, edge readability, and metal highlight control.",
       "output_image_path": "server/output/images/minecraft_iron_sword.png",
-      "timestamp": "2026-04-16T03:20:16.005690+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:10.920143+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "cell_index": 0,
+        "row": 0,
+        "col": 0,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 20.08
     },
     {
       "item_key": "healing_potion",
@@ -70,13 +118,25 @@
       "provider": "pixellab",
       "prompt": "Healing Potion, A small healing potion in a glass vial with vivid liquid inside. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Container silhouette, liquid color separation, and glass readability.",
       "output_image_path": "server/output/images/minecraft_healing_potion.png",
-      "timestamp": "2026-04-16T03:20:16.005729+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:10.920935+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "cell_index": 1,
+        "row": 0,
+        "col": 1,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 20.08
     },
     {
       "item_key": "crystal_ore",
@@ -84,13 +144,25 @@
       "provider": "pixellab",
       "prompt": "Crystal Ore, A crystal ore chunk with irregular geometry and visible internal glow. Pixel art asset, 16x16, front-facing icon view perspective, minimal or absent explicit outlines, simple flat shading with low contrast, vibrant but limited, strong block-color readability, simple pixel icon, low detail density, blocky, geometric, low-frequency detail. Focus on Glow handling, irregular silhouette, and clustered texture detail.",
       "output_image_path": "server/output/images/minecraft_crystal_ore.png",
-      "timestamp": "2026-04-16T03:20:16.005766+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:10.921639+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "cell_index": 2,
+        "row": 0,
+        "col": 2,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/minecraft_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 20.08
     },
     {
       "item_key": "iron_sword",
@@ -98,13 +170,25 @@
       "provider": "pixellab",
       "prompt": "Iron Sword, A practical iron sword with a simple guard and readable metallic blade. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Long silhouette, edge readability, and metal highlight control.",
       "output_image_path": "server/output/images/terraria_iron_sword.png",
-      "timestamp": "2026-04-16T03:20:16.005867+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:34.470460+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "cell_index": 0,
+        "row": 0,
+        "col": 0,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 23.55
     },
     {
       "item_key": "healing_potion",
@@ -112,13 +196,25 @@
       "provider": "pixellab",
       "prompt": "Healing Potion, A small healing potion in a glass vial with vivid liquid inside. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Container silhouette, liquid color separation, and glass readability.",
       "output_image_path": "server/output/images/terraria_healing_potion.png",
-      "timestamp": "2026-04-16T03:20:16.005906+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:34.471787+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "cell_index": 1,
+        "row": 0,
+        "col": 1,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 23.55
     },
     {
       "item_key": "crystal_ore",
@@ -126,13 +222,25 @@
       "provider": "pixellab",
       "prompt": "Crystal Ore, A crystal ore chunk with irregular geometry and visible internal glow. Pixel art asset, 16x16 or 32x32, side-view perspective, strong dark outlines, often 1px-black-adjacent edges, bright highlights with dithered or high-contrast shadow steps, bright and high-contrast, stylized pixel art, medium-high detail density, thin readable profiles with strong edge contrast. Focus on Glow handling, irregular silhouette, and clustered texture detail.",
       "output_image_path": "server/output/images/terraria_crystal_ore.png",
-      "timestamp": "2026-04-16T03:20:16.005942+00:00",
-      "notes": "dry-run — no API call made",
+      "timestamp": "2026-04-23T03:29:34.472522+00:00",
+      "notes": "",
       "spritesheet": {
-        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "cell_index": 2,
+        "row": 0,
+        "col": 2,
         "cell_size": 32,
-        "sheet_cols": 3
-      }
+        "sheet_size": {
+          "width": 96,
+          "height": 32
+        },
+        "sheet_path": "server/output/images/sheets/terraria_sheet_3x1_32px.png",
+        "sheet_cols": 3,
+        "requested_sheet_size": {
+          "width": 96,
+          "height": 32
+        }
+      },
+      "elapsed_seconds": 23.55
     }
   ]
 }

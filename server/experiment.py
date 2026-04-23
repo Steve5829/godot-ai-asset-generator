@@ -123,13 +123,28 @@ def _build_spritesheet_prompt(
     sheet_rows = (len(rows_for_style) + sheet_cols - 1) // sheet_cols
 
     # Provide explicit cell mapping so we can crop deterministically.
+    # Keep each cell instruction SHORT to avoid the model collapsing everything into one dominant item.
+    item_by_key = {item.key: item for item in BENCHMARK_ITEMS}
     cells: List[str] = []
     for idx, row in enumerate(rows_for_style):
         r = idx // sheet_cols
         c = idx % sheet_cols
-        cells.append(
-            f"Cell (row {r+1}, col {c+1}): {row['item_key']} — {row['item_title']}. {row['prompt']}"
-        )
+        item_key = row["item_key"]
+        item_title = row.get("item_title") or item_key
+        item = item_by_key.get(item_key)
+        focus = (item.visual_focus if item else "").strip()
+        base_desc = (item.description if item else "").strip()
+        # One short sentence per cell: what + what to focus on.
+        detail_bits = []
+        if base_desc:
+            detail_bits.append(base_desc)
+        if focus:
+            detail_bits.append(f"Focus: {focus}")
+        detail = " ".join(detail_bits).strip()
+        if detail:
+            cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}. {detail}")
+        else:
+            cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}.")
 
     return (
         "Create a pixel art spritesheet on a transparent background.\n"
@@ -142,11 +157,14 @@ def _build_spritesheet_prompt(
         "- Leave at least 1px padding to the cell border.\n"
         "- No text, labels, borders, shadows outside the sprites.\n"
         "- Keep lighting, palette, and line treatment consistent across all cells.\n"
-        f"Style target: {style.title} ({style.key}). "
-        f"Perspective: {style.perspective}. Palette: {style.palette}. "
-        f"Outlines: {style.outlines}. Lighting: {style.lighting}. "
-        f"Rendering: {style.rendering}. Detail density: {style.detail_density}. "
-        f"Shape language: {style.shape_language}.\n"
+        f"Style target: {style.title} ({style.key}).\n"
+        f"- Perspective: {style.perspective}\n"
+        f"- Palette: {style.palette}\n"
+        f"- Outlines: {style.outlines}\n"
+        f"- Lighting: {style.lighting}\n"
+        f"- Rendering: {style.rendering}\n"
+        f"- Detail density: {style.detail_density}\n"
+        f"- Shape language: {style.shape_language}\n"
         "Cells:\n"
         + "\n".join(cells)
     )
