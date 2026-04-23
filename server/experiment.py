@@ -92,20 +92,29 @@ def _generate_with_pixellab(
     width: int,
     height: int,
     no_background: bool = True,
+    *,
+    detail: Optional[str] = None,
+    outline: Optional[str] = None,
 ) -> bytes:
     if not PIXELLAB_API_KEY:
         raise ValueError(
             "PIXELLAB_API_KEY is not set. "
             "Export it or add it to server/.env before running experiments."
         )
+    payload: Dict[str, Any] = {
+        "description": description,
+        "image_size": {"width": width, "height": height},
+        "no_background": no_background,
+    }
+    if isinstance(detail, str) and detail.strip():
+        payload["detail"] = detail.strip()
+    if isinstance(outline, str) and outline.strip():
+        payload["outline"] = outline.strip()
+
     response = requests.post(
         "https://api.pixellab.ai/v1/generate-image-pixflux",
         headers={"Authorization": "Bearer " + PIXELLAB_API_KEY},
-        json={
-            "description": description,
-            "image_size": {"width": width, "height": height},
-            "no_background": no_background,
-        },
+        json=payload,
         timeout=(10, 180),
     )
     response.raise_for_status()
@@ -226,6 +235,20 @@ def _clamp_sheet_dimensions(width: int, height: int) -> tuple[int, int]:
     return (max(32, min(400, int(width))), max(32, min(400, int(height))))
 
 
+def _pixflux_hints_for_style(style_key: str) -> Dict[str, str]:
+    """
+    PixFlux supports weakly-guiding 'detail' and 'outline' enums.
+    Docs: https://api.pixellab.ai/v1/docs (Generate image pixflux).
+    """
+    key = str(style_key or "").strip().lower()
+    if key == "minecraft":
+        return {"detail": "low detail", "outline": "lineless"}
+    if key == "terraria":
+        return {"detail": "highly detailed", "outline": "single color black outline"}
+    # core_keeper + fallback
+    return {"detail": "medium detail", "outline": "selective outline"}
+
+
 def _build_spritesheet_prompt(
     *,
     style_key: str,
@@ -274,6 +297,7 @@ def _build_spritesheet_prompt(
         f"Grid: {sheet_cols} columns × {sheet_rows} rows.\n"
         f"Each cell is exactly {cell_size}x{cell_size} pixels.\n"
         "Rules:\n"
+        "- Crisp pixel edges only: NO blur, NO anti-aliasing, NO smooth gradients.\n"
         "- Put exactly ONE item in each cell, centered in its cell.\n"
         "- Do NOT overlap across cells.\n"
         "- Leave at least 1px padding to the cell border.\n"
@@ -423,7 +447,15 @@ def _run_spritesheet_experiments(
 
         t0 = time.monotonic()
         try:
-            sheet_bytes = _generate_with_pixellab(sheet_prompt, sheet_w, sheet_h, no_background=True)
+            hints = _pixflux_hints_for_style(style_key)
+            sheet_bytes = _generate_with_pixellab(
+                sheet_prompt,
+                sheet_w,
+                sheet_h,
+                no_background=True,
+                detail=hints.get("detail"),
+                outline=hints.get("outline"),
+            )
             elapsed = time.monotonic() - t0
             sheet_path.write_bytes(sheet_bytes)
             print(f"  [ok] generated sheet ({elapsed:.1f}s, {len(sheet_bytes)} bytes) -> {sheet_path}")
@@ -568,7 +600,14 @@ def _run_single(
 
     t0 = time.monotonic()
     try:
-        image_bytes = _generate_with_pixellab(final_description, width, height)
+        hints = _pixflux_hints_for_style(style_key)
+        image_bytes = _generate_with_pixellab(
+            final_description,
+            width,
+            height,
+            detail=hints.get("detail"),
+            outline=hints.get("outline"),
+        )
         elapsed = time.monotonic() - t0
         images_dir.mkdir(parents=True, exist_ok=True)
         image_path.write_bytes(image_bytes)
