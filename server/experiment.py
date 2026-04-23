@@ -235,6 +235,45 @@ def _clamp_sheet_dimensions(width: int, height: int) -> tuple[int, int]:
     return (max(32, min(400, int(width))), max(32, min(400, int(height))))
 
 
+def _resolve_sheet_layout(
+    *,
+    num_items: int,
+    sheet_cols: int,
+    cell_size: int,
+    min_canvas_side: int = 200,
+    max_canvas_side: int = 400,
+) -> Dict[str, int]:
+    """
+    Compute a grid where canvas == cols*cell == rows*cell, so cropping stays aligned.
+
+    - rows = ceil(num_items / cols)
+    - cell_size is scaled UP if needed so both canvas sides reach >= min_canvas_side
+      (PixelLab's transparent background is unreliable under ~200px).
+    - cell_size is capped so both sides stay <= max_canvas_side (PixelLab pixflux max 400).
+    """
+    cols = max(1, int(sheet_cols))
+    rows = max(1, (max(1, int(num_items)) + cols - 1) // cols)
+    cell = max(32, int(cell_size))
+
+    min_cell_for_min_canvas = max(
+        (min_canvas_side + cols - 1) // cols,
+        (min_canvas_side + rows - 1) // rows,
+    )
+    cell = max(cell, min_cell_for_min_canvas)
+
+    max_cell_for_max_canvas = min(max_canvas_side // cols, max_canvas_side // rows)
+    if max_cell_for_max_canvas >= 32:
+        cell = min(cell, max_cell_for_max_canvas)
+
+    return {
+        "cols": cols,
+        "rows": rows,
+        "cell": cell,
+        "sheet_w": cols * cell,
+        "sheet_h": rows * cell,
+    }
+
+
 def _pixflux_hints_for_style(style_key: str) -> Dict[str, str]:
     """
     PixFlux supports weakly-guiding 'detail' and 'outline' enums.
@@ -256,6 +295,7 @@ def _build_spritesheet_prompt(
     sheet_cols: int,
     cell_size: int,
     llm_cell_descriptions: Optional[Dict[str, str]] = None,
+    sheet_rows: Optional[int] = None,
 ) -> str:
     """
     Ask PixFlux to generate a strict grid spritesheet.
@@ -264,7 +304,13 @@ def _build_spritesheet_prompt(
     style = STYLE_MATRIX[style_key]
     sheet_cols = max(1, int(sheet_cols))
     cell_size = max(16, int(cell_size))
-    sheet_rows = (len(rows_for_style) + sheet_cols - 1) // sheet_cols
+    sheet_rows = (
+        int(sheet_rows)
+        if sheet_rows
+        else (len(rows_for_style) + sheet_cols - 1) // sheet_cols
+    )
+    total_cells = sheet_cols * sheet_rows
+    empty_cells = max(0, total_cells - len(rows_for_style))
 
     # Provide explicit cell mapping so we can crop deterministically.
     # Keep each cell instruction SHORT to avoid the model collapsing everything into one dominant item.
@@ -291,6 +337,11 @@ def _build_spritesheet_prompt(
         detail = " ".join(detail_bits).strip()
         cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}. {detail}" if detail else f"Cell (row {r+1}, col {c+1}): {item_title}.")
 
+    empty_rule = (
+        f"- The last {empty_cells} cell(s) of the grid are EMPTY: fully transparent, draw nothing there.\n"
+        if empty_cells > 0
+        else ""
+    )
     return (
         "Create a pixel art spritesheet on a transparent background.\n"
         f"Canvas: {sheet_cols * cell_size}x{sheet_rows * cell_size} pixels.\n"
@@ -298,8 +349,12 @@ def _build_spritesheet_prompt(
         f"Each cell is exactly {cell_size}x{cell_size} pixels.\n"
         "Rules:\n"
         "- Crisp pixel edges only: NO blur, NO anti-aliasing, NO smooth gradients.\n"
-        "- Put exactly ONE item in each cell, centered in its cell.\n"
+        "- Put exactly ONE item in each listed cell, centered in its cell.\n"
+        "- Fill EVERY listed cell with its specified item.\n"
+        "- Do NOT repeat items across different cells.\n"
+        "- Do NOT add extra items outside the grid.\n"
         "- Do NOT overlap across cells.\n"
+        + empty_rule +
         "- Leave at least 1px padding to the cell border.\n"
         "- No text, labels, borders, shadows outside the sprites.\n"
         "- Keep lighting, palette, and line treatment consistent across all cells.\n"
@@ -390,8 +445,16 @@ def _run_spritesheet_experiments(
     for style_idx, style in enumerate(STYLE_MATRIX.values(), 1):
         style_key = style.key
         rows_for_style = [r for r in rows if r["style_key"] == style_key]
-        sheet_rows = (len(rows_for_style) + max(1, sheet_cols) - 1) // max(1, sheet_cols)
-        sheet_w, sheet_h = _clamp_sheet_dimensions(sheet_cols * cell_size, sheet_rows * cell_size)
+        layout = _resolve_sheet_layout(
+            num_items=len(rows_for_style),
+            sheet_cols=sheet_cols,
+            cell_size=cell_size,
+        )
+        effective_cols = layout["cols"]
+        effective_rows = layout["rows"]
+        effective_cell = layout["cell"]
+        sheet_w = layout["sheet_w"]
+        sheet_h = layout["sheet_h"]
 
         llm_cell_descriptions: Optional[Dict[str, str]] = None
         if llm_augment:
@@ -410,16 +473,22 @@ def _run_spritesheet_experiments(
         sheet_prompt = _build_spritesheet_prompt(
             style_key=style_key,
             rows_for_style=rows_for_style,
-            sheet_cols=sheet_cols,
-            cell_size=cell_size,
+            sheet_cols=effective_cols,
+            cell_size=effective_cell,
             llm_cell_descriptions=llm_cell_descriptions,
+            sheet_rows=effective_rows,
         )
 
-        sheet_filename = f"{style_key}_sheet_{sheet_cols}x{sheet_rows}_{cell_size}px.png"
+        sheet_filename = (
+            f"{style_key}_sheet_{effective_cols}x{effective_rows}_{effective_cell}px.png"
+        )
         sheet_path = sheets_dir / sheet_filename
         sheets_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"[style {style_idx}/{total_styles}] {style_key} spritesheet {sheet_w}x{sheet_h} ({sheet_cols}x{sheet_rows})")
+        print(
+            f"[style {style_idx}/{total_styles}] {style_key} spritesheet "
+            f"{sheet_w}x{sheet_h} ({effective_cols}x{effective_rows}, cell={effective_cell}px)"
+        )
 
         if dry_run:
             print("  [dry-run] skipping API call and crop")
@@ -438,8 +507,10 @@ def _run_spritesheet_experiments(
                         "notes": "dry-run — no API call made",
                         "spritesheet": {
                             "sheet_path": str(sheet_path.relative_to(BASE_DIR.parent)),
-                            "cell_size": cell_size,
-                            "sheet_cols": sheet_cols,
+                            "cell_size": effective_cell,
+                            "sheet_cols": effective_cols,
+                            "sheet_rows": effective_rows,
+                            "requested_sheet_size": {"width": sheet_w, "height": sheet_h},
                         },
                     }
                 )
@@ -463,15 +534,16 @@ def _run_spritesheet_experiments(
             cropped_results = _crop_sheet_to_items(
                 sheet_png_bytes=sheet_bytes,
                 rows_for_style=rows_for_style,
-                sheet_cols=sheet_cols,
-                cell_size=cell_size,
+                sheet_cols=effective_cols,
+                cell_size=effective_cell,
                 images_dir=images_dir,
                 style_key=style_key,
             )
             for r in cropped_results:
                 r["elapsed_seconds"] = round(elapsed, 2)
                 r["spritesheet"]["sheet_path"] = str(sheet_path.relative_to(BASE_DIR.parent))
-                r["spritesheet"]["sheet_cols"] = sheet_cols
+                r["spritesheet"]["sheet_cols"] = effective_cols
+                r["spritesheet"]["sheet_rows"] = effective_rows
                 r["spritesheet"]["requested_sheet_size"] = {"width": sheet_w, "height": sheet_h}
             all_results.extend(cropped_results)
         except requests.HTTPError as exc:
@@ -497,8 +569,9 @@ def _run_spritesheet_experiments(
                         "elapsed_seconds": round(elapsed, 2),
                         "spritesheet": {
                             "sheet_path": str(sheet_path.relative_to(BASE_DIR.parent)),
-                            "cell_size": cell_size,
-                            "sheet_cols": sheet_cols,
+                            "cell_size": effective_cell,
+                            "sheet_cols": effective_cols,
+                            "sheet_rows": effective_rows,
                             "requested_sheet_size": {"width": sheet_w, "height": sheet_h},
                         },
                     }
@@ -521,8 +594,9 @@ def _run_spritesheet_experiments(
                         "elapsed_seconds": round(elapsed, 2),
                         "spritesheet": {
                             "sheet_path": str(sheet_path.relative_to(BASE_DIR.parent)),
-                            "cell_size": cell_size,
-                            "sheet_cols": sheet_cols,
+                            "cell_size": effective_cell,
+                            "sheet_cols": effective_cols,
+                            "sheet_rows": effective_rows,
                             "requested_sheet_size": {"width": sheet_w, "height": sheet_h},
                         },
                     }
@@ -532,8 +606,8 @@ def _run_spritesheet_experiments(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "provider": "pixellab",
         "mode": "spritesheet",
-        "sheet_cols": sheet_cols,
-        "cell_size": cell_size,
+        "sheet_cols_requested": sheet_cols,
+        "cell_size_requested": cell_size,
         "total": len(all_results),
         "succeeded": sum(1 for r in all_results if not str(r.get("notes", "")).startswith("error")),
         "failed": sum(1 for r in all_results if str(r.get("notes", "")).startswith("error")),
@@ -728,14 +802,21 @@ def main() -> int:
     parser.add_argument(
         "--spritesheet-cols",
         type=int,
-        default=3,
-        help="Spritesheet columns (per style). Default 3 (fits 3 benchmark items in one row).",
+        default=2,
+        help=(
+            "Spritesheet columns (per style). Default 2 gives a 2x2 grid for 3 items "
+            "(1 cell left empty). Square-ish layouts tend to respect the model better."
+        ),
     )
     parser.add_argument(
         "--spritesheet-cell",
         type=int,
-        default=32,
-        help="Spritesheet cell size in pixels (square). Default 32.",
+        default=128,
+        help=(
+            "Requested spritesheet cell size in pixels (square). Default 128. "
+            "May be scaled up automatically so both canvas sides reach >=200px "
+            "(PixelLab transparency is unreliable below that), capped at 400."
+        ),
     )
     parser.add_argument(
         "--sheets-dir",
