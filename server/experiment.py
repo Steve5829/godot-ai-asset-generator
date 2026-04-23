@@ -17,7 +17,7 @@ import requests
 from dotenv import load_dotenv
 from PIL import Image
 
-from style_matrix import BENCHMARK_ITEMS, STYLE_MATRIX, build_experiment_matrix
+from style_matrix import BENCHMARK_ITEMS, STYLE_MATRIX, benchmark_item_dict, build_experiment_matrix, style_profile_dict
 
 BASE_DIR = Path(__file__).resolve().parent
 for _env_path in (BASE_DIR / ".env", BASE_DIR.parent / ".env"):
@@ -25,11 +25,15 @@ for _env_path in (BASE_DIR / ".env", BASE_DIR.parent / ".env"):
         load_dotenv(_env_path, override=False)
 
 PIXELLAB_API_KEY = os.getenv("PIXELLAB_API_KEY") or os.getenv("PIXELLAB_SECRET")
+OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
 OUTPUT_DIR = BASE_DIR / "output"
 IMAGES_DIR = OUTPUT_DIR / "images"
 RESULTS_DIR = OUTPUT_DIR / "results"
 SHEETS_DIR = IMAGES_DIR / "sheets"
+LLM_CACHE_PATH = RESULTS_DIR / "llm_description_cache.json"
 
 
 
@@ -49,6 +53,14 @@ def _write_json(data: Any, output_path: Path) -> None:
     output_path.write_text(
         json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+
+def _read_json_if_exists(path: Path) -> Any:
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
 
 
 
@@ -102,6 +114,114 @@ def _generate_with_pixellab(
         raise ValueError("PixelLab API returned an unexpected response")
     return _decode_base64_image(payload.get("image"))
 
+def _extract_json_object(text: str) -> Dict[str, Any]:
+    stripped = str(text or "").strip()
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("LLM response does not contain a JSON object")
+    return json.loads(stripped[start : end + 1])
+
+
+def _chat_json(messages: List[Dict[str, str]], temperature: float) -> Dict[str, Any]:
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured")
+
+    response = requests.post(
+        OPENAI_BASE_URL + "/chat/completions",
+        headers={
+            "Authorization": "Bearer " + OPENAI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": OPENAI_MODEL,
+            "temperature": float(temperature),
+            "response_format": {"type": "json_object"},
+            "messages": messages,
+        },
+        timeout=(10, 90),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    choices = payload.get("choices") or []
+    if not choices:
+        raise ValueError("LLM returned no choices")
+    content = choices[0].get("message", {}).get("content", "")
+    if isinstance(content, list):
+        text = "".join(
+            item.get("text", "")
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "text"
+        )
+    else:
+        text = str(content)
+    return _extract_json_object(text)
+
+
+def _llm_description_cache_key(style_key: str, item_key: str) -> str:
+    return "%s:%s" % (style_key, item_key)
+
+
+def _get_llm_visual_description(
+    *,
+    item_key: str,
+    style_key: str,
+    temperature: float,
+    cache: Dict[str, Any],
+    cache_path: Path,
+) -> Dict[str, str]:
+    """
+    Returns {"description": "...", "source": "cache|llm"}.
+    """
+    key = _llm_description_cache_key(style_key, item_key)
+    cached = cache.get(key)
+    if isinstance(cached, dict) and isinstance(cached.get("description"), str) and cached["description"].strip():
+        return {"description": cached["description"].strip(), "source": "cache"}
+
+    style = style_profile_dict(style_key)
+    item = benchmark_item_dict(item_key)
+
+    system = (
+        "You are a senior pixel-art game artist. "
+        "Given an item spec and a style profile, write a concrete VISUAL description "
+        "of what the item looks like in that style. "
+        "Be specific about silhouette, materials, shading, palette direction, and readability. "
+        "Do NOT mention famous games by name. "
+        "Do NOT include layout or spritesheet instructions. "
+        "Output JSON only: {\"description\": \"...\"}. Keep it 1-3 sentences."
+    )
+    user = json.dumps(
+        {
+            "item": item,
+            "style_profile": style,
+            "constraints": {
+                "transparent_background": True,
+                "pixel_art": True,
+                "avoid": ["text", "watermarks", "logos", "blurry edges", "anti-aliasing"],
+            },
+        },
+        ensure_ascii=True,
+    )
+
+    payload = _chat_json(
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        temperature=temperature,
+    )
+    description = str(payload.get("description") or "").strip()
+    if not description:
+        raise ValueError("LLM returned empty description")
+
+    cache[key] = {
+        "description": description,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "style_key": style_key,
+        "item_key": item_key,
+        "model": OPENAI_MODEL,
+    }
+    _write_json(cache, cache_path)
+    return {"description": description, "source": "llm"}
+
+
 def _clamp_sheet_dimensions(width: int, height: int) -> tuple[int, int]:
     return (max(32, min(400, int(width))), max(32, min(400, int(height))))
 
@@ -112,6 +232,7 @@ def _build_spritesheet_prompt(
     rows_for_style: List[Dict[str, str]],
     sheet_cols: int,
     cell_size: int,
+    llm_cell_descriptions: Optional[Dict[str, str]] = None,
 ) -> str:
     """
     Ask PixFlux to generate a strict grid spritesheet.
@@ -131,20 +252,21 @@ def _build_spritesheet_prompt(
         c = idx % sheet_cols
         item_key = row["item_key"]
         item_title = row.get("item_title") or item_key
+        if llm_cell_descriptions and isinstance(llm_cell_descriptions.get(item_key), str):
+            detail = llm_cell_descriptions[item_key].strip()
+            cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}. {detail}")
+            continue
+
         item = item_by_key.get(item_key)
         focus = (item.visual_focus if item else "").strip()
         base_desc = (item.description if item else "").strip()
-        # One short sentence per cell: what + what to focus on.
         detail_bits = []
         if base_desc:
             detail_bits.append(base_desc)
         if focus:
             detail_bits.append(f"Focus: {focus}")
         detail = " ".join(detail_bits).strip()
-        if detail:
-            cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}. {detail}")
-        else:
-            cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}.")
+        cells.append(f"Cell (row {r+1}, col {c+1}): {item_title}. {detail}" if detail else f"Cell (row {r+1}, col {c+1}): {item_title}.")
 
     return (
         "Create a pixel art spritesheet on a transparent background.\n"
@@ -230,9 +352,16 @@ def _run_spritesheet_experiments(
     sheet_cols: int,
     cell_size: int,
     dry_run: bool = False,
+    llm_augment: bool = False,
+    llm_temperature: float = 0.0,
+    llm_cache_path: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     all_results: List[Dict[str, Any]] = []
     total_styles = len(STYLE_MATRIX)
+    cache_path = llm_cache_path or LLM_CACHE_PATH
+    cache = _read_json_if_exists(cache_path)
+    if not isinstance(cache, dict):
+        cache = {}
 
     for style_idx, style in enumerate(STYLE_MATRIX.values(), 1):
         style_key = style.key
@@ -240,11 +369,26 @@ def _run_spritesheet_experiments(
         sheet_rows = (len(rows_for_style) + max(1, sheet_cols) - 1) // max(1, sheet_cols)
         sheet_w, sheet_h = _clamp_sheet_dimensions(sheet_cols * cell_size, sheet_rows * cell_size)
 
+        llm_cell_descriptions: Optional[Dict[str, str]] = None
+        if llm_augment:
+            llm_cell_descriptions = {}
+            for row in rows_for_style:
+                item_key = row["item_key"]
+                desc = _get_llm_visual_description(
+                    item_key=item_key,
+                    style_key=style_key,
+                    temperature=llm_temperature,
+                    cache=cache,
+                    cache_path=cache_path,
+                )
+                llm_cell_descriptions[item_key] = desc["description"]
+
         sheet_prompt = _build_spritesheet_prompt(
             style_key=style_key,
             rows_for_style=rows_for_style,
             sheet_cols=sheet_cols,
             cell_size=cell_size,
+            llm_cell_descriptions=llm_cell_descriptions,
         )
 
         sheet_filename = f"{style_key}_sheet_{sheet_cols}x{sheet_rows}_{cell_size}px.png"
@@ -262,6 +406,7 @@ def _run_spritesheet_experiments(
                         "style_key": style_key,
                         "provider": "pixellab",
                         "prompt": row["prompt"],
+                        "llm_description": (llm_cell_descriptions or {}).get(row["item_key"], ""),
                         "output_image_path": str(
                             (images_dir / f"{style_key}_{row['item_key']}.png").relative_to(BASE_DIR.parent)
                         ),
@@ -373,6 +518,9 @@ def _run_single(
     row: Dict[str, str],
     images_dir: Path,
     dry_run: bool = False,
+    llm_augment: bool = False,
+    llm_temperature: float = 0.0,
+    llm_cache_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Generate one image for an (item, style) pair and return a result record."""
     prompt = row["prompt"]
@@ -380,14 +528,32 @@ def _run_single(
     item_key = row["item_key"]
     width, height = _parse_prompt_dimensions(prompt, 128, 128)
 
+    cache_path = llm_cache_path or LLM_CACHE_PATH
+    cache = _read_json_if_exists(cache_path)
+    if not isinstance(cache, dict):
+        cache = {}
+    llm_desc: Optional[Dict[str, str]] = None
+    if llm_augment:
+        llm_desc = _get_llm_visual_description(
+            item_key=item_key,
+            style_key=style_key,
+            temperature=llm_temperature,
+            cache=cache,
+            cache_path=cache_path,
+        )
+
     filename = f"{style_key}_{item_key}.png"
     image_path = images_dir / filename
 
+    final_description = (llm_desc or {}).get("description") or prompt
     result: Dict[str, Any] = {
         "item_key": item_key,
         "style_key": style_key,
         "provider": "pixellab",
         "prompt": prompt,
+        "llm_description": (llm_desc or {}).get("description", ""),
+        "description_source": (llm_desc or {}).get("source", "human_prompt"),
+        "final_description": final_description,
         "width": width,
         "height": height,
         "output_image_path": str(image_path.relative_to(BASE_DIR.parent)),
@@ -402,7 +568,7 @@ def _run_single(
 
     t0 = time.monotonic()
     try:
-        image_bytes = _generate_with_pixellab(prompt, width, height)
+        image_bytes = _generate_with_pixellab(final_description, width, height)
         elapsed = time.monotonic() - t0
         images_dir.mkdir(parents=True, exist_ok=True)
         image_path.write_bytes(image_bytes)
@@ -432,13 +598,23 @@ def _run_experiments(
     images_dir: Path,
     results_path: Path,
     dry_run: bool = False,
+    llm_augment: bool = False,
+    llm_temperature: float = 0.0,
+    llm_cache_path: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     results: List[Dict[str, Any]] = []
     total = len(rows)
 
     for idx, row in enumerate(rows, 1):
         print(f"[{idx}/{total}] {row['style_key']} × {row['item_key']}")
-        result = _run_single(row, images_dir, dry_run=dry_run)
+        result = _run_single(
+            row,
+            images_dir,
+            dry_run=dry_run,
+            llm_augment=llm_augment,
+            llm_temperature=llm_temperature,
+            llm_cache_path=llm_cache_path,
+        )
         results.append(result)
 
     summary: Dict[str, Any] = {
@@ -483,6 +659,22 @@ def main() -> int:
         "--dry-run",
         action="store_true",
         help="Skip API calls (useful for testing the pipeline).",
+    )
+    parser.add_argument(
+        "--llm-augment",
+        action="store_true",
+        help="Use an LLM to generate a visual description per (item, style) before calling PixelLab.",
+    )
+    parser.add_argument(
+        "--llm-temperature",
+        type=float,
+        default=0.0,
+        help="LLM temperature (default 0.0 for reproducibility).",
+    )
+    parser.add_argument(
+        "--llm-cache",
+        default=str(LLM_CACHE_PATH),
+        help="Path to LLM description cache JSON.",
     )
     parser.add_argument(
         "--images-dir",
@@ -536,6 +728,9 @@ def main() -> int:
             images_dir=Path(args.images_dir).resolve(),
             results_path=Path(args.results_path).resolve(),
             dry_run=args.dry_run,
+            llm_augment=bool(args.llm_augment),
+            llm_temperature=float(args.llm_temperature),
+            llm_cache_path=Path(args.llm_cache).resolve() if args.llm_cache else None,
         )
 
     if args.run_spritesheet:
@@ -552,6 +747,9 @@ def main() -> int:
             sheet_cols=int(args.spritesheet_cols),
             cell_size=int(args.spritesheet_cell),
             dry_run=bool(args.dry_run),
+            llm_augment=bool(args.llm_augment),
+            llm_temperature=float(args.llm_temperature),
+            llm_cache_path=Path(args.llm_cache).resolve() if args.llm_cache else None,
         )
 
     return 0
