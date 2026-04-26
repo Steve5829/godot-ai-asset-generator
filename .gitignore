@@ -211,6 +211,16 @@ __marimo__/
 generate_*.png
 node_3d.tscn
 
+# Generated image outputs and local visual experiments
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.ico
 
 __pycache__/
 .env
