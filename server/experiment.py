@@ -33,7 +33,61 @@ OUTPUT_DIR = BASE_DIR / "output"
 IMAGES_DIR = OUTPUT_DIR / "images"
 RESULTS_DIR = OUTPUT_DIR / "results"
 SHEETS_DIR = IMAGES_DIR / "sheets"
+BLOCK_TEXTURES_DIR = OUTPUT_DIR / "block_textures"
 LLM_CACHE_PATH = RESULTS_DIR / "llm_description_cache.json"
+
+BIOME_BLOCKS: Dict[str, Dict[str, str]] = {
+    "forest_grass_dirt": {
+        "biome": "forest",
+        "title": "Forest Grass Dirt Block",
+        "top": (
+            "dense Core Keeper forest ground canopy made of many rounded green leaf clusters, "
+            "clover-like leaf shapes, moss patches, tiny yellow flower dots, dark teal shadow gaps, "
+            "organic leafy noise; mostly green, not plain flat grass"
+        ),
+        "front": (
+            "vertical wall of tangled exposed tree roots and twisting brown branches, "
+            "rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe "
+            "along the upper seam; root lattice texture, not plain dirt"
+        ),
+    },
+    "desert_sandstone": {
+        "biome": "desert",
+        "title": "Desert Sandstone Block",
+        "top": (
+            "warm sandy top surface with small wind-shaped grains, pale gold "
+            "and tan color variation, sparse cracked patterns"
+        ),
+        "front": (
+            "layered sandstone vertical wall with horizontal strata, small chips, "
+            "warm orange shadows, dry eroded texture"
+        ),
+    },
+    "ocean_coral_rock": {
+        "biome": "ocean",
+        "title": "Ocean Coral Rock Block",
+        "top": (
+            "wet blue-green coral rock top with tiny coral specks, seaweed flecks, "
+            "cool turquoise highlights, damp uneven surface"
+        ),
+        "front": (
+            "dark wet rock vertical wall with algae streaks, barnacle-like dots, "
+            "blue-green shadows, underwater mineral texture"
+        ),
+    },
+    "barren_cracked_stone": {
+        "biome": "barren",
+        "title": "Barren Cracked Stone Block",
+        "top": (
+            "dry gray-brown cracked stone top surface, dusty rubble, sparse dark "
+            "fractures, desaturated rocky pixel texture"
+        ),
+        "front": (
+            "vertical cracked stone wall with jagged fissures, dusty sediment, "
+            "muted gray and brown palette, rough barren texture"
+        ),
+    },
+}
 
 
 
@@ -744,6 +798,206 @@ def _run_experiments(
     print(f"  succeeded: {summary['succeeded']}  failed: {summary['failed']}")
     return results
 
+
+def _build_block_face_prompt(
+    *,
+    block: Dict[str, str],
+    face: str,
+    source_width: int,
+    source_height: int,
+) -> str:
+    face_description = block[face]
+    face_label = "top horizontal face" if face == "top" else "front vertical face"
+    face_rules = (
+        "Read as a top-down leafy floor texture: scattered individual leaf shapes, moss, "
+        "small dark holes, no vertical wall and no cube sides. "
+        if face == "top"
+        else "Read as the side of a raised forest block: hanging/twisting roots and branches, "
+        "dark cavities, vertical depth, no grassy field top and no cube outline. "
+    )
+    return (
+        f"Create a {source_width}x{source_height} seamless pixel art material texture tile. "
+        "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
+        f"Draw only the {face_label} material for a Core Keeper-style biome block. "
+        f"Block: {block['title']} from the {block['biome']} biome. "
+        f"Material details: {face_description}. "
+        + face_rules +
+        "Fill the entire canvas edge-to-edge with texture. "
+        "No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. "
+        "Crisp pixel art, hard edges, limited palette, tileable material texture."
+    )
+
+
+def _compose_block_texture(
+    *,
+    top_png_bytes: bytes,
+    front_png_bytes: bytes,
+    output_width: int,
+) -> Image.Image:
+    output_width = max(16, int(output_width))
+    top_h = max(1, output_width // 2)
+    front_h = output_width
+    resample = getattr(Image, "Resampling", Image).NEAREST
+
+    top = Image.open(io.BytesIO(top_png_bytes)).convert("RGBA")
+    front = Image.open(io.BytesIO(front_png_bytes)).convert("RGBA")
+    top = top.resize((output_width, top_h), resample=resample)
+    front = front.resize((output_width, front_h), resample=resample)
+
+    composed = Image.new("RGBA", (output_width, top_h + front_h), (0, 0, 0, 0))
+    composed.paste(top, (0, 0))
+    composed.paste(front, (0, top_h))
+    return composed
+
+
+def _select_biome_blocks(biomes: str, block_keys: str) -> List[tuple[str, Dict[str, str]]]:
+    biome_filter = {s.strip() for s in str(biomes or "").split(",") if s.strip()}
+    block_filter = {s.strip() for s in str(block_keys or "").split(",") if s.strip()}
+    selected: List[tuple[str, Dict[str, str]]] = []
+    for key, block in BIOME_BLOCKS.items():
+        if biome_filter and block["biome"] not in biome_filter:
+            continue
+        if block_filter and key not in block_filter:
+            continue
+        selected.append((key, block))
+    return selected
+
+
+def _run_block_texture_experiments(
+    *,
+    blocks_dir: Path,
+    results_path: Path,
+    biomes: str,
+    block_keys: str,
+    source_size: int,
+    output_width: int,
+    dry_run: bool = False,
+) -> List[Dict[str, Any]]:
+    selected_blocks = _select_biome_blocks(biomes, block_keys)
+    if not selected_blocks:
+        print("No biome blocks match the requested filters.")
+        return []
+
+    source_size = max(64, min(200, int(source_size)))
+    output_width = max(16, min(128, int(output_width)))
+    top_h = max(1, output_width // 2)
+    front_h = output_width
+    top_source_w = source_size
+    top_source_h = max(32, source_size // 2)
+    front_source_w = source_size
+    front_source_h = source_size
+    faces_dir = blocks_dir / "faces"
+    blocks_dir.mkdir(parents=True, exist_ok=True)
+    faces_dir.mkdir(parents=True, exist_ok=True)
+
+    results: List[Dict[str, Any]] = []
+    total = len(selected_blocks)
+
+    for idx, (block_key, block) in enumerate(selected_blocks, 1):
+        print(f"[{idx}/{total}] {block['biome']} × {block_key}")
+        top_prompt = _build_block_face_prompt(
+            block=block,
+            face="top",
+            source_width=top_source_w,
+            source_height=top_source_h,
+        )
+        front_prompt = _build_block_face_prompt(
+            block=block,
+            face="front",
+            source_width=front_source_w,
+            source_height=front_source_h,
+        )
+
+        top_path = faces_dir / f"{block_key}_top_{top_source_w}x{top_source_h}.png"
+        front_path = faces_dir / f"{block_key}_front_{front_source_w}x{front_source_h}.png"
+        output_path = blocks_dir / f"{block_key}_{output_width}x{top_h + front_h}.png"
+        result: Dict[str, Any] = {
+            "block_key": block_key,
+            "biome": block["biome"],
+            "provider": "pixellab",
+            "mode": "programmatic_block_texture",
+            "top_prompt": top_prompt,
+            "front_prompt": front_prompt,
+            "source_size": {
+                "top": {"width": top_source_w, "height": top_source_h},
+                "front": {"width": front_source_w, "height": front_source_h},
+            },
+            "output_size": {"width": output_width, "height": top_h + front_h},
+            "parts": {
+                "top": {"height": top_h, "path": str(top_path.relative_to(BASE_DIR.parent))},
+                "front": {"height": front_h, "path": str(front_path.relative_to(BASE_DIR.parent))},
+            },
+            "output_image_path": str(output_path.relative_to(BASE_DIR.parent)),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "notes": "",
+        }
+
+        if dry_run:
+            result["notes"] = "dry-run — no API call made"
+            print("  [dry-run] would generate top + front, then compose block texture")
+            results.append(result)
+            continue
+
+        t0 = time.monotonic()
+        try:
+            top_bytes = _generate_with_pixellab(
+                top_prompt,
+                top_source_w,
+                top_source_h,
+                no_background=False,
+                detail="medium detail",
+                outline="lineless",
+            )
+            front_bytes = _generate_with_pixellab(
+                front_prompt,
+                front_source_w,
+                front_source_h,
+                no_background=False,
+                detail="medium detail",
+                outline="lineless",
+            )
+            top_path.write_bytes(top_bytes)
+            front_path.write_bytes(front_bytes)
+            composed = _compose_block_texture(
+                top_png_bytes=top_bytes,
+                front_png_bytes=front_bytes,
+                output_width=output_width,
+            )
+            composed.save(output_path, format="PNG")
+            elapsed = time.monotonic() - t0
+            result["elapsed_seconds"] = round(elapsed, 2)
+            print(f"  [ok] composed {output_path} ({elapsed:.1f}s)")
+        except requests.HTTPError as exc:
+            elapsed = time.monotonic() - t0
+            body = exc.response.text[:500] if exc.response is not None else ""
+            result["elapsed_seconds"] = round(elapsed, 2)
+            result["notes"] = f"error: {exc} | body: {body}"
+            print(f"  [FAIL] {block_key} ({elapsed:.1f}s) — {exc}")
+            if body:
+                print(f"         API response: {body}")
+        except Exception as exc:
+            elapsed = time.monotonic() - t0
+            result["elapsed_seconds"] = round(elapsed, 2)
+            result["notes"] = f"error: {exc}"
+            print(f"  [FAIL] {block_key} ({elapsed:.1f}s) — {exc}")
+
+        results.append(result)
+
+    summary: Dict[str, Any] = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "provider": "pixellab",
+        "mode": "programmatic_block_texture",
+        "total": len(results),
+        "succeeded": sum(1 for r in results if not str(r.get("notes", "")).startswith("error")),
+        "failed": sum(1 for r in results if str(r.get("notes", "")).startswith("error")),
+        "results": results,
+    }
+    _write_json(summary, results_path)
+    print(f"\nBlock texture results written to {results_path}")
+    print(f"  succeeded: {summary['succeeded']}  failed: {summary['failed']}")
+    return results
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Style-matrix benchmark: generate prompts or run PixelLab experiments."
@@ -767,6 +1021,14 @@ def main() -> int:
         "--run-spritesheet",
         action="store_true",
         help="Generate one spritesheet per style, then crop into per-item PNGs (fewer API calls).",
+    )
+    parser.add_argument(
+        "--run-block-textures",
+        action="store_true",
+        help=(
+            "Route C: generate top/front material tiles separately, then compose "
+            "Core Keeper-style two-face block textures."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -823,6 +1085,36 @@ def main() -> int:
         default=str(SHEETS_DIR),
         help="Directory to save generated spritesheets.",
     )
+    parser.add_argument(
+        "--block-textures-dir",
+        default=str(BLOCK_TEXTURES_DIR),
+        help="Directory to save generated block texture atlases.",
+    )
+    parser.add_argument(
+        "--block-biomes",
+        default="forest",
+        help=(
+            "Comma-separated biome keys for --run-block-textures. "
+            "Default: forest (keeps API usage low). Use barren,forest,ocean,desert for all."
+        ),
+    )
+    parser.add_argument(
+        "--block-keys",
+        default="",
+        help="Comma-separated block keys for --run-block-textures (default: all matching biomes).",
+    )
+    parser.add_argument(
+        "--block-source-size",
+        type=int,
+        default=64,
+        help="PixelLab source tile size for each face. Default 64.",
+    )
+    parser.add_argument(
+        "--block-output-width",
+        type=int,
+        default=32,
+        help="Final block texture width. Default 32, producing a 32x48 atlas.",
+    )
     args = parser.parse_args()
 
     rows = build_experiment_matrix()
@@ -841,7 +1133,9 @@ def main() -> int:
         for row in rows:
             print(f"  [{row['style_key']}] {row['item_key']}: {row['prompt']}")
 
-    if args.run or args.dry_run:
+    selected_mode = bool(args.run or args.run_spritesheet or args.run_block_textures)
+
+    if args.run or (args.dry_run and not selected_mode):
         print()
         _run_experiments(
             rows,
@@ -851,6 +1145,21 @@ def main() -> int:
             llm_augment=bool(args.llm_augment),
             llm_temperature=float(args.llm_temperature),
             llm_cache_path=Path(args.llm_cache).resolve() if args.llm_cache else None,
+        )
+
+    if args.run_block_textures:
+        print()
+        results_path = Path(args.results_path).resolve()
+        if str(results_path).endswith("style_benchmark_results.json"):
+            results_path = results_path.with_name("block_texture_results.json")
+        _run_block_texture_experiments(
+            blocks_dir=Path(args.block_textures_dir).resolve(),
+            results_path=results_path,
+            biomes=str(args.block_biomes),
+            block_keys=str(args.block_keys),
+            source_size=int(args.block_source_size),
+            output_width=int(args.block_output_width),
+            dry_run=bool(args.dry_run),
         )
 
     if args.run_spritesheet:

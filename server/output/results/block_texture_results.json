@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-04-26T20:19:32.533226+00:00",
+  "provider": "pixellab",
+  "mode": "programmatic_block_texture",
+  "total": 1,
+  "succeeded": 1,
+  "failed": 0,
+  "results": [
+    {
+      "block_key": "forest_grass_dirt",
+      "biome": "forest",
+      "provider": "pixellab",
+      "mode": "programmatic_block_texture",
+      "top_prompt": "Create a 64x32 seamless pixel art material texture tile. This is NOT an icon, NOT a cube drawing, and NOT a perspective object. Draw only the top horizontal face material for a Core Keeper-style biome block. Block: Forest Leaf Root Block from the forest biome. Material details: extremely dense forest leaf canopy surface made of hundreds of tiny overlapping green leaf pixels and small clover-like leaf shapes, packed edge-to-edge with almost no empty space; bright yellow-green highlights, dark emerald shadow speckles, tiny yellow flower dots; looks like a thick leafy carpet, not large round bubbles. Read as a top-down leafy floor texture: very high-density tiny leaf marks, micro leaf clusters, mossy green noise, small yellow flecks, no large circular blobs, no vertical wall and no cube sides. Fill the entire canvas edge-to-edge with texture. No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. Avoid smooth gradients and anti-aliased painting. Crisp pixel art, hard edges, limited palette, tileable material texture.",
+      "front_prompt": "Create a 64x64 seamless pixel art material texture tile. This is NOT an icon, NOT a cube drawing, and NOT a perspective object. Draw only the front vertical face material for a Core Keeper-style biome block. Block: Forest Leaf Root Block from the forest biome. Material details: vertical side wall made of a tight lattice of twisting orange-brown tree roots and curled branches, densely looping around each other; the spaces between roots are deep black hollow voids, not brown dirt; mossy green leaf fringe along the upper seam; root network covers the face with many curved branch segments and black negative spaces. Read as the side of a raised forest block: compact tangled roots and curved branches on a mostly black hollow background. Use black negative space between roots. Do not make a solid brown dirt wall. Do not fill gaps with soil. No grassy field top and no cube outline. Fill the entire canvas edge-to-edge with texture. No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. Avoid smooth gradients and anti-aliased painting. Crisp pixel art, hard edges, limited palette, tileable material texture.",
+      "source_size": {
+        "top": {
+          "width": 64,
+          "height": 32
+        },
+        "front": {
+          "width": 64,
+          "height": 64
+        }
+      },
+      "output_size": {
+        "width": 32,
+        "height": 48
+      },
+      "parts": {
+        "top": {
+          "height": 16,
+          "path": "server/output/block_textures/faces/forest_grass_dirt_top_64x32.png"
+        },
+        "front": {
+          "height": 32,
+          "path": "server/output/block_textures/faces/forest_grass_dirt_front_64x64.png"
+        }
+      },
+      "output_image_path": "server/output/block_textures/forest_grass_dirt_32x48.png",
+      "timestamp": "2026-04-26T20:19:05.535366+00:00",
+      "notes": "",
+      "elapsed_seconds": 27.0
+    }
+  ]
+}
