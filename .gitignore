@@ -221,6 +221,10 @@ node_3d.tscn
 *.tif
 *.tiff
 *.ico
+*.png.import
+*.jpg.import
+*.jpeg.import
+*.webp.import
 
 __pycache__/
 .env
