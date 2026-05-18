@@ -28,12 +28,15 @@ PIXELLAB_API_KEY = os.getenv("PIXELLAB_API_KEY") or os.getenv("PIXELLAB_SECRET")
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
+OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1"
+OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 
 OUTPUT_DIR = BASE_DIR / "output"
 IMAGES_DIR = OUTPUT_DIR / "images"
 RESULTS_DIR = OUTPUT_DIR / "results"
 SHEETS_DIR = IMAGES_DIR / "sheets"
 BLOCK_TEXTURES_DIR = OUTPUT_DIR / "block_textures"
+TEXTURE_ATLASES_DIR = OUTPUT_DIR / "texture_atlases"
 LLM_CACHE_PATH = RESULTS_DIR / "llm_description_cache.json"
 
 BIOME_BLOCKS: Dict[str, Dict[str, str]] = {
@@ -85,6 +88,42 @@ BIOME_BLOCKS: Dict[str, Dict[str, str]] = {
         "front": (
             "vertical cracked stone wall with jagged fissures, dusty sediment, "
             "muted gray and brown palette, rough barren texture"
+        ),
+    },
+}
+
+GROUND_TEXTURES: Dict[str, Dict[str, str]] = {
+    "forest_ground": {
+        "biome": "forest",
+        "title": "Forest Ground Texture Atlas",
+        "description": (
+            "dense Core Keeper-like forest floor made of tightly packed small green leaves, "
+            "moss, dark teal shadow pockets, tiny yellow flower specks, scattered darker grass "
+            "clusters, organic leafy noise, no large objects"
+        ),
+    },
+    "desert_ground": {
+        "biome": "desert",
+        "title": "Desert Ground Texture Atlas",
+        "description": (
+            "warm sandy desert floor with subtle wind-shaped grain variation, pale tan and gold "
+            "clusters, tiny pebbles, sparse cracks, dry pixel texture, no objects"
+        ),
+    },
+    "ocean_ground": {
+        "biome": "ocean",
+        "title": "Ocean Ground Texture Atlas",
+        "description": (
+            "wet blue-green ocean floor with algae flecks, coral specks, dark damp stone patches, "
+            "turquoise highlights, underwater organic mineral texture, no objects"
+        ),
+    },
+    "barren_ground": {
+        "biome": "barren",
+        "title": "Barren Ground Texture Atlas",
+        "description": (
+            "dry gray-brown barren stone floor with dusty rubble, small cracks, desaturated rocky "
+            "clusters, sparse dark fractures, rough cave ground texture, no objects"
         ),
     },
 }
@@ -176,6 +215,57 @@ def _generate_with_pixellab(
     if not isinstance(payload, dict):
         raise ValueError("PixelLab API returned an unexpected response")
     return _decode_base64_image(payload.get("image"))
+
+
+def _generate_with_openai_image(description: str, size: str = "1024x1024") -> bytes:
+    if not OPENAI_API_KEY:
+        raise ValueError(
+            "OPENAI_API_KEY is not set. Export it or add it to server/.env before running GPT Image experiments."
+        )
+
+    payload: Dict[str, Any] = {
+        "model": OPENAI_IMAGE_MODEL,
+        "prompt": description,
+        "size": size,
+        "quality": OPENAI_IMAGE_QUALITY,
+        "n": 1,
+    }
+    response = requests.post(
+        OPENAI_BASE_URL + "/images/generations",
+        headers={
+            "Authorization": "Bearer " + OPENAI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=(10, 180),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    data = payload.get("data") or []
+    if not data or not isinstance(data[0], dict):
+        raise ValueError("OpenAI image API returned no image data")
+
+    b64_json = data[0].get("b64_json")
+    if isinstance(b64_json, str) and b64_json:
+        return base64.b64decode(b64_json)
+
+    image_url = data[0].get("url")
+    if isinstance(image_url, str) and image_url:
+        image_response = requests.get(image_url, timeout=(10, 180))
+        image_response.raise_for_status()
+        return image_response.content
+
+    raise ValueError("OpenAI image API response did not include b64_json or url")
+
+
+def _resize_png_bytes(image_bytes: bytes, width: int, height: int) -> bytes:
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    resample = getattr(Image, "Resampling", Image).NEAREST
+    resized = image.resize((int(width), int(height)), resample=resample)
+    output = io.BytesIO()
+    resized.save(output, format="PNG")
+    return output.getvalue()
+
 
 def _extract_json_object(text: str) -> Dict[str, Any]:
     stripped = str(text or "").strip()
@@ -998,6 +1088,222 @@ def _run_block_texture_experiments(
     return results
 
 
+def _build_ground_texture_prompt(
+    *,
+    texture: Dict[str, str],
+    atlas_size: int,
+    provider: str,
+) -> str:
+    if provider == "openai":
+        return (
+            "Create a square top-down pixel art game scene crop / ground texture reference, "
+            "inspired by Core Keeper forest biome materials. "
+            "This should look like a dense forest floor area from a 16-bit top-down cave game, "
+            "not a blurred abstract texture. "
+            f"Target use: later manual cropping/downsampling into a {atlas_size}x{atlas_size} texture sample. "
+            f"Biome texture: {texture['title']} ({texture['biome']}). "
+            f"Material details: {texture['description']}. "
+            "Use many distinct tiny leaf clusters, moss patches, dark teal gaps, small yellow flower specks, "
+            "and readable pixel shapes. Avoid smooth blurry noise. "
+            "No characters, UI, text, icons, large props, cube drawing, isometric object, or visible grid. "
+            "Crisp pixel-art look, high local contrast, dense organic variation, tile-cropping friendly."
+        )
+    return (
+        f"Create a {atlas_size}x{atlas_size} seamless top-down pixel art ground texture image. "
+        "This is a material texture sheet, NOT an icon, NOT a cube, NOT an isometric scene. "
+        f"Biome texture: {texture['title']} ({texture['biome']}). "
+        f"Material details: {texture['description']}. "
+        "Fill the entire square canvas edge-to-edge with coherent natural variation. "
+        "Avoid characters, props, UI, labels, borders, large isolated objects, and perspective walls. "
+        "Do not draw visible grid lines or individual tile borders. "
+        "Make it suitable for later manual cropping into game tiles. "
+        "Crisp pixel art, hard edges, limited palette, Core Keeper-like dense organic texture."
+    )
+
+
+def _select_ground_textures(biomes: str, texture_keys: str) -> List[tuple[str, Dict[str, str]]]:
+    biome_filter = {s.strip() for s in str(biomes or "").split(",") if s.strip()}
+    texture_filter = {s.strip() for s in str(texture_keys or "").split(",") if s.strip()}
+    selected: List[tuple[str, Dict[str, str]]] = []
+    for key, texture in GROUND_TEXTURES.items():
+        if biome_filter and texture["biome"] not in biome_filter:
+            continue
+        if texture_filter and key not in texture_filter:
+            continue
+        selected.append((key, texture))
+    return selected
+
+
+def _slice_texture_atlas(
+    *,
+    atlas_png_bytes: bytes,
+    texture_key: str,
+    atlas_size: int,
+    tile_size: int,
+    tiles_dir: Path,
+) -> List[Dict[str, Any]]:
+    image = Image.open(io.BytesIO(atlas_png_bytes)).convert("RGBA")
+    resample = getattr(Image, "Resampling", Image).NEAREST
+    if image.size != (atlas_size, atlas_size):
+        image = image.resize((atlas_size, atlas_size), resample=resample)
+
+    texture_tiles_dir = tiles_dir / texture_key
+    texture_tiles_dir.mkdir(parents=True, exist_ok=True)
+    tiles: List[Dict[str, Any]] = []
+    tiles_per_side = atlas_size // tile_size
+    for row in range(tiles_per_side):
+        for col in range(tiles_per_side):
+            left = col * tile_size
+            upper = row * tile_size
+            tile = image.crop((left, upper, left + tile_size, upper + tile_size))
+            tile_path = texture_tiles_dir / f"{texture_key}_r{row:02d}_c{col:02d}.png"
+            tile.save(tile_path, format="PNG")
+            tiles.append(
+                {
+                    "row": row,
+                    "col": col,
+                    "path": str(tile_path.relative_to(BASE_DIR.parent)),
+                }
+            )
+    return tiles
+
+
+def _run_ground_tileset_experiments(
+    *,
+    atlases_dir: Path,
+    results_path: Path,
+    biomes: str,
+    texture_keys: str,
+    atlas_size: int,
+    tile_size: int,
+    provider: str = "pixellab",
+    openai_image_size: str = "1024x1024",
+    slice_tiles: bool = False,
+    dry_run: bool = False,
+) -> List[Dict[str, Any]]:
+    selected_textures = _select_ground_textures(biomes, texture_keys)
+    if not selected_textures:
+        print("No ground textures match the requested filters.")
+        return []
+
+    atlas_size = max(64, min(400, int(atlas_size)))
+    tile_size = max(8, int(tile_size))
+    provider = str(provider or "pixellab").strip().lower()
+    if provider not in {"pixellab", "openai"}:
+        raise ValueError("ground provider must be 'pixellab' or 'openai'")
+    if slice_tiles and atlas_size % tile_size != 0:
+        raise ValueError(
+            f"atlas_size ({atlas_size}) must be divisible by tile_size ({tile_size})"
+        )
+
+    tiles_dir = atlases_dir / "tiles"
+    atlases_dir.mkdir(parents=True, exist_ok=True)
+    if slice_tiles:
+        tiles_dir.mkdir(parents=True, exist_ok=True)
+    results: List[Dict[str, Any]] = []
+    total = len(selected_textures)
+
+    for idx, (texture_key, texture) in enumerate(selected_textures, 1):
+        print(f"[{idx}/{total}] {texture['biome']} × {texture_key}")
+        prompt = _build_ground_texture_prompt(
+            texture=texture,
+            atlas_size=atlas_size,
+            provider=provider,
+        )
+        atlas_path = atlases_dir / f"{texture_key}_{provider}_{atlas_size}x{atlas_size}.png"
+        raw_path = atlases_dir / f"{texture_key}_{provider}_raw.png"
+        result: Dict[str, Any] = {
+            "texture_key": texture_key,
+            "biome": texture["biome"],
+            "provider": provider,
+            "mode": "ground_texture_atlas",
+            "prompt": prompt,
+            "atlas_size": {"width": atlas_size, "height": atlas_size},
+            "openai_image_model": OPENAI_IMAGE_MODEL if provider == "openai" else None,
+            "openai_image_size": openai_image_size if provider == "openai" else None,
+            "raw_image_path": str(raw_path.relative_to(BASE_DIR.parent)) if provider == "openai" else None,
+            "slice_tiles": slice_tiles,
+            "tile_size": {"width": tile_size, "height": tile_size} if slice_tiles else None,
+            "tiles_per_side": atlas_size // tile_size if slice_tiles else None,
+            "atlas_path": str(atlas_path.relative_to(BASE_DIR.parent)),
+            "tiles": [],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "notes": "",
+        }
+
+        if dry_run:
+            result["notes"] = "dry-run — no API call made"
+            action = "generate atlas, then slice into tiles" if slice_tiles else "generate atlas only"
+            print(f"  [dry-run] would {action}")
+            results.append(result)
+            continue
+
+        t0 = time.monotonic()
+        try:
+            if provider == "openai":
+                raw_bytes = _generate_with_openai_image(prompt, size=openai_image_size)
+                raw_path.write_bytes(raw_bytes)
+                atlas_bytes = _resize_png_bytes(raw_bytes, atlas_size, atlas_size)
+            else:
+                atlas_bytes = _generate_with_pixellab(
+                    prompt,
+                    atlas_size,
+                    atlas_size,
+                    no_background=False,
+                    detail="medium detail",
+                    outline="lineless",
+                )
+            atlas_path.write_bytes(atlas_bytes)
+            tiles: List[Dict[str, Any]] = []
+            if slice_tiles:
+                tiles = _slice_texture_atlas(
+                    atlas_png_bytes=atlas_bytes,
+                    texture_key=texture_key,
+                    atlas_size=atlas_size,
+                    tile_size=tile_size,
+                    tiles_dir=tiles_dir,
+                )
+            elapsed = time.monotonic() - t0
+            result["elapsed_seconds"] = round(elapsed, 2)
+            result["tiles"] = tiles
+            if slice_tiles:
+                print(
+                    f"  [ok] generated {atlas_path} and {len(tiles)} tiles "
+                    f"({elapsed:.1f}s)"
+                )
+            else:
+                print(f"  [ok] generated {atlas_path} ({elapsed:.1f}s)")
+        except requests.HTTPError as exc:
+            elapsed = time.monotonic() - t0
+            body = exc.response.text[:500] if exc.response is not None else ""
+            result["elapsed_seconds"] = round(elapsed, 2)
+            result["notes"] = f"error: {exc} | body: {body}"
+            print(f"  [FAIL] {texture_key} ({elapsed:.1f}s) — {exc}")
+            if body:
+                print(f"         API response: {body}")
+        except Exception as exc:
+            elapsed = time.monotonic() - t0
+            result["elapsed_seconds"] = round(elapsed, 2)
+            result["notes"] = f"error: {exc}"
+            print(f"  [FAIL] {texture_key} ({elapsed:.1f}s) — {exc}")
+
+        results.append(result)
+
+    summary: Dict[str, Any] = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "provider": provider,
+        "mode": "ground_texture_atlas",
+        "total": len(results),
+        "succeeded": sum(1 for r in results if not str(r.get("notes", "")).startswith("error")),
+        "failed": sum(1 for r in results if str(r.get("notes", "")).startswith("error")),
+        "results": results,
+    }
+    _write_json(summary, results_path)
+    print(f"\nGround texture results written to {results_path}")
+    print(f"  succeeded: {summary['succeeded']}  failed: {summary['failed']}")
+    return results
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Style-matrix benchmark: generate prompts or run PixelLab experiments."
@@ -1028,6 +1334,13 @@ def main() -> int:
         help=(
             "Route C: generate top/front material tiles separately, then compose "
             "Core Keeper-style two-face block textures."
+        ),
+    )
+    parser.add_argument(
+        "--run-ground-tileset",
+        action="store_true",
+        help=(
+            "Route A: generate one large biome ground texture atlas for manual review/cropping."
         ),
     )
     parser.add_argument(
@@ -1115,6 +1428,55 @@ def main() -> int:
         default=32,
         help="Final block texture width. Default 32, producing a 32x48 atlas.",
     )
+    parser.add_argument(
+        "--texture-atlases-dir",
+        default=str(TEXTURE_ATLASES_DIR),
+        help="Directory to save generated ground texture atlases.",
+    )
+    parser.add_argument(
+        "--ground-biomes",
+        default="forest",
+        help=(
+            "Comma-separated biome keys for --run-ground-tileset. "
+            "Default: forest (one PixelLab call). Use barren,forest,ocean,desert for all."
+        ),
+    )
+    parser.add_argument(
+        "--ground-keys",
+        default="",
+        help="Comma-separated ground texture keys for --run-ground-tileset.",
+    )
+    parser.add_argument(
+        "--ground-atlas-size",
+        type=int,
+        default=128,
+        help="Generated square atlas size. Default 128.",
+    )
+    parser.add_argument(
+        "--ground-tile-size",
+        type=int,
+        default=16,
+        help="Tile crop size if --slice-ground-tiles is enabled. Default 16.",
+    )
+    parser.add_argument(
+        "--ground-provider",
+        choices=("pixellab", "openai"),
+        default="pixellab",
+        help="Provider for --run-ground-tileset. Use openai to try GPT Image.",
+    )
+    parser.add_argument(
+        "--openai-image-size",
+        default="1024x1024",
+        help="OpenAI image generation size for --ground-provider openai. Default 1024x1024.",
+    )
+    parser.add_argument(
+        "--slice-ground-tiles",
+        action="store_true",
+        help=(
+            "Optional: automatically slice generated ground atlases into tile candidates. "
+            "Off by default so the full image can be manually inspected/cropped."
+        ),
+    )
     args = parser.parse_args()
 
     rows = build_experiment_matrix()
@@ -1133,7 +1495,12 @@ def main() -> int:
         for row in rows:
             print(f"  [{row['style_key']}] {row['item_key']}: {row['prompt']}")
 
-    selected_mode = bool(args.run or args.run_spritesheet or args.run_block_textures)
+    selected_mode = bool(
+        args.run
+        or args.run_spritesheet
+        or args.run_block_textures
+        or args.run_ground_tileset
+    )
 
     if args.run or (args.dry_run and not selected_mode):
         print()
@@ -1159,6 +1526,24 @@ def main() -> int:
             block_keys=str(args.block_keys),
             source_size=int(args.block_source_size),
             output_width=int(args.block_output_width),
+            dry_run=bool(args.dry_run),
+        )
+
+    if args.run_ground_tileset:
+        print()
+        results_path = Path(args.results_path).resolve()
+        if str(results_path).endswith("style_benchmark_results.json"):
+            results_path = results_path.with_name("ground_texture_results.json")
+        _run_ground_tileset_experiments(
+            atlases_dir=Path(args.texture_atlases_dir).resolve(),
+            results_path=results_path,
+            biomes=str(args.ground_biomes),
+            texture_keys=str(args.ground_keys),
+            atlas_size=int(args.ground_atlas_size),
+            tile_size=int(args.ground_tile_size),
+            provider=str(args.ground_provider),
+            openai_image_size=str(args.openai_image_size),
+            slice_tiles=bool(args.slice_ground_tiles),
             dry_run=bool(args.dry_run),
         )
 
