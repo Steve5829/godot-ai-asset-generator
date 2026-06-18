@@ -1,10 +1,12 @@
 import base64
 import binascii
+import io
 import json
 import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -59,6 +61,8 @@ PIXELLAB_API_KEY = os.getenv("PIXELLAB_API_KEY") or os.getenv("PIXELLAB_SECRET")
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
+OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1"
+OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 RESAMPLING = getattr(Image, "Resampling", Image)
@@ -98,6 +102,16 @@ ASSET_TYPE_SPECS = {
             "Use crisp edges and proportions suitable for a placeable terrain or building block."
         ),
     },
+    "spritesheet": {
+        "label": "Spritesheet",
+        "default_width": 256,
+        "default_height": 256,
+        "no_background": True,
+        "prompt_guidance": (
+            "Create a sprite animation sheet or organized sprite cells. Keep cells evenly spaced, use consistent scale, "
+            "and make each frame readable against a transparent or simple background."
+        ),
+    },
     "reference_scene": {
         "label": "Reference Scene",
         "default_width": 400,
@@ -110,14 +124,15 @@ ASSET_TYPE_SPECS = {
     },
 }
 SUPPORTED_ASSET_TYPES = set(ASSET_TYPE_SPECS.keys())
-SUPPORTED_GENERATION_PROVIDERS = {"pixellab"}
+SUPPORTED_GENERATION_PROVIDERS = {"pixellab", "openai_image"}
 
 
 class GenerateAssetRequest(BaseModel):
     prompt: str = Field(min_length=1)
     folder_path: str = "res://"
-    asset_type: str = "icon"
-    style_target: str = "core_keeper"
+    asset_type: str = "auto"
+    workflow_mode: str = "auto"
+    style_target: Optional[str] = "none"
     provider: str = "pixellab"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
@@ -163,6 +178,8 @@ def _clamp_size(value: int, default: int) -> int:
 
 def _normalize_style_target(style_target: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(style_target or "").strip().lower()).strip("_")
+    if normalized in {"", "none", "no_style", "default", "null", "nil", "undefined"}:
+        return "none"
     if normalized in SUPPORTED_STYLE_TARGETS:
         return normalized
     return "core_keeper"
@@ -170,6 +187,13 @@ def _normalize_style_target(style_target: str) -> str:
 
 def _style_context(style_target: str) -> Dict[str, Any]:
     normalized = _normalize_style_target(style_target)
+    if normalized == "none":
+        return {
+            "key": "none",
+            "title": "No Style Target",
+            "target_style_selected": False,
+            "notes": "No target style selected; use the user prompt, asset type constraints, and provider constraints only.",
+        }
     try:
         return style_profile_dict(normalized)
     except Exception:
@@ -180,15 +204,26 @@ def _style_context(style_target: str) -> Dict[str, Any]:
         }
 
 
-def _normalize_asset_type(asset_type: str) -> str:
+def _normalize_asset_type(asset_type: str, allow_auto: bool = False) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(asset_type or "").strip().lower()).strip("_")
+    if allow_auto and normalized in {"", "auto", "automatic", "planned", "planner"}:
+        return "auto"
     if normalized in SUPPORTED_ASSET_TYPES:
         return normalized
     return "icon"
 
 
+def _normalize_workflow_mode(workflow_mode: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(workflow_mode or "").strip().lower()).strip("_")
+    if normalized in {"", "auto", "automatic", "planned", "planner"}:
+        return "auto"
+    return normalized
+
+
 def _normalize_generation_provider(provider: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(provider or "").strip().lower()).strip("_")
+    if normalized in {"gpt_image", "openai", "openai_images", "gpt_images"}:
+        return "openai_image"
     if normalized in SUPPORTED_GENERATION_PROVIDERS:
         return normalized
     return "pixellab"
@@ -207,6 +242,12 @@ def _provider_constraints(provider: str) -> str:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
         return "PixelLab provider. Prefer native-looking pixel art, crisp silhouettes, and no blurry edges."
+    if normalized_provider == "openai_image":
+        return (
+            "GPT Image provider. It can handle richer reference scenes, larger compositions, and atlas-like outputs "
+            "better than PixelLab, but the final saved asset will still be clamped to 400px per side. Preserve crisp "
+            "game-art readability, avoid photorealism unless requested, and make repeatable materials less object-centric."
+        )
     return "No provider-specific constraints supplied."
 
 
@@ -338,8 +379,124 @@ def _default_generation_dimensions(asset_type: str) -> Dict[str, int]:
     }
 
 
-def _plan_generation(prompt: str, asset_type: str, style_target: str, provider: str) -> Dict[str, Any]:
-    normalized_asset_type = _normalize_asset_type(asset_type)
+def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str:
+    normalized_requested = _normalize_asset_type(requested_asset_type, allow_auto=True)
+    if normalized_requested != "auto":
+        return normalized_requested
+
+    lowered = prompt.lower()
+    if any(token in lowered for token in ("spritesheet", "sprite sheet", "walk cycle", "animation frame", "animation sheet")):
+        return "spritesheet"
+    if any(token in lowered for token in ("two-face", "two face", "top and front", "top/front", "block texture", "voxel block")):
+        return "block_texture"
+    if "block" in lowered and any(token in lowered for token in ("texture", "tile", "stone", "dirt", "grass", "ore")):
+        return "block_texture"
+    if any(token in lowered for token in ("ground atlas", "terrain atlas", "tile atlas", "atlas", "tilemap", "ground tile", "floor tile")):
+        return "ground_atlas"
+    if any(token in lowered for token in ("reference scene", "concept scene", "scene concept", "background", "environment concept")):
+        return "reference_scene"
+    return "icon"
+
+
+def _default_workflow_for_asset_type(asset_type: str) -> str:
+    if asset_type == "block_texture":
+        return "block_texture_two_face"
+    if asset_type == "ground_atlas":
+        return "ground_atlas"
+    if asset_type == "spritesheet":
+        return "spritesheet"
+    if asset_type == "reference_scene":
+        return "reference_scene"
+    return "single_image"
+
+
+def _parse_grid_config(prompt: str) -> Dict[str, int]:
+    lowered = prompt.lower()
+    grid_match = re.search(r"(\d{1,2})\s*[xX×]\s*(\d{1,2})\s*(?:grid|sheet|spritesheet|sprite sheet|cells|frames)", prompt)
+    if grid_match:
+        return {"columns": max(1, int(grid_match.group(1))), "rows": max(1, int(grid_match.group(2)))}
+
+    frame_match = re.search(r"(\d{1,2})\s*(?:frames|frame animation|animation frames)", lowered)
+    if frame_match:
+        frame_count = max(1, int(frame_match.group(1)))
+        return {"columns": frame_count, "rows": 1}
+
+    return {"columns": 4, "rows": 4}
+
+
+def _default_postprocess_config(prompt: str, asset_type: str) -> Dict[str, Any]:
+    lowered = prompt.lower()
+    if asset_type == "ground_atlas":
+        should_slice = any(token in lowered for token in ("slice", "crop", "split", "tileset cells", "individual tiles"))
+        tile_size_match = re.search(r"(\d{2,3})\s*(?:px|pixel)?\s*tiles?", lowered)
+        tile_size = int(tile_size_match.group(1)) if tile_size_match else 32
+        return {"slice": should_slice, "tile_width": _clamp_size(tile_size, 32), "tile_height": _clamp_size(tile_size, 32)}
+
+    if asset_type == "spritesheet":
+        should_crop = any(token in lowered for token in ("crop", "slice", "split", "individual frames", "cells"))
+        grid = _parse_grid_config(prompt)
+        return {"crop_cells": should_crop, "columns": grid["columns"], "rows": grid["rows"]}
+
+    if asset_type == "block_texture":
+        return {"final_width": 32, "top_height": 16, "front_height": 32}
+
+    return {}
+
+
+def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _workflow_expected_outputs(asset_type: str, postprocess: Dict[str, Any]) -> List[str]:
+    if asset_type == "block_texture":
+        return ["block_texture", "top_face_source", "front_face_source"]
+    if asset_type == "ground_atlas":
+        return ["full_image", "atlas_tiles"] if bool(postprocess.get("slice", False)) else ["full_image"]
+    if asset_type == "spritesheet":
+        return ["full_image", "sprite_cells"] if bool(postprocess.get("crop_cells", False)) else ["full_image"]
+    return ["full_image"]
+
+
+def _coerce_postprocess_config(asset_type: str, value: Any, fallback: Dict[str, Any]) -> Dict[str, Any]:
+    config = dict(fallback)
+    if isinstance(value, dict):
+        config.update(value)
+
+    if asset_type == "ground_atlas":
+        config["slice"] = bool(config.get("slice", False))
+        config["tile_width"] = _clamp_size(config.get("tile_width"), fallback.get("tile_width", 32))
+        config["tile_height"] = _clamp_size(config.get("tile_height"), fallback.get("tile_height", 32))
+    elif asset_type == "spritesheet":
+        config["crop_cells"] = bool(config.get("crop_cells", False))
+        config["columns"] = _bounded_int(config.get("columns"), int(fallback.get("columns", 4)), 1, 16)
+        config["rows"] = _bounded_int(config.get("rows"), int(fallback.get("rows", 4)), 1, 16)
+    elif asset_type == "block_texture":
+        config["final_width"] = _clamp_size(config.get("final_width"), fallback.get("final_width", 32))
+        config["top_height"] = _clamp_size(config.get("top_height"), fallback.get("top_height", 16))
+        config["front_height"] = _clamp_size(config.get("front_height"), fallback.get("front_height", 32))
+    return config
+
+
+def _normalize_workflow(asset_type: str, workflow: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(workflow or "").strip().lower()).strip("_")
+    allowed = {
+        "single_image",
+        "ground_atlas",
+        "spritesheet",
+        "block_texture_two_face",
+        "reference_scene",
+    }
+    if normalized in allowed:
+        return normalized
+    return _default_workflow_for_asset_type(asset_type)
+
+
+def _fallback_generation_plan(prompt: str, asset_type: str, workflow_mode: str, style_target: str, provider: str, note: str) -> Dict[str, Any]:
+    normalized_asset_type = _infer_asset_type_from_prompt(prompt, asset_type)
     normalized_style = _normalize_style_target(style_target)
     normalized_provider = _normalize_generation_provider(provider)
     style_context = _style_context(normalized_style)
@@ -350,43 +507,73 @@ def _plan_generation(prompt: str, asset_type: str, style_target: str, provider: 
         default_dimensions["height"],
     )
     asset_spec = _asset_type_spec(normalized_asset_type)
-    fallback = {
+    workflow = _normalize_workflow(
+        normalized_asset_type,
+        workflow_mode if _normalize_workflow_mode(workflow_mode) != "auto" else _default_workflow_for_asset_type(normalized_asset_type),
+    )
+    postprocess = _default_postprocess_config(prompt, normalized_asset_type)
+    description = prompt.strip()
+    return {
         "description": prompt.strip(),
+        "descriptions": {
+            "primary": description,
+            "top": "%s, top face only, seamless tile material, viewed straight-on as the top surface" % description,
+            "front": "%s, front face only, seamless tile material, viewed straight-on as the vertical face" % description,
+        },
         "width": fallback_dimensions["width"],
         "height": fallback_dimensions["height"],
         "filename_stub": _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
         "no_background": bool(asset_spec["no_background"]),
         "asset_type": normalized_asset_type,
+        "workflow": workflow,
         "style_target": normalized_style,
         "style_context": style_context,
         "provider": normalized_provider,
+        "postprocess": postprocess,
+        "outputs_expected": _workflow_expected_outputs(normalized_asset_type, postprocess),
+        "notes": [note],
         "planning_source": "fallback",
-        "planning_note": "Used fallback plan before LLM planning completed.",
+        "planning_note": note,
     }
+
+
+def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
+    requested_asset_type = _normalize_asset_type(request.asset_type, allow_auto=True)
+    normalized_style = _normalize_style_target(request.style_target)
+    normalized_provider = _normalize_generation_provider(request.provider)
+    workflow_mode = _normalize_workflow_mode(request.workflow_mode)
+    fallback = _fallback_generation_plan(
+        request.prompt,
+        requested_asset_type,
+        workflow_mode,
+        normalized_style,
+        normalized_provider,
+        "Used fallback workflow plan before LLM planning completed.",
+    )
 
     failure_reason = ""
     try:
         plan = _chat_json(
             (
-                "You are an expert technical artist and AI planner for pixel-art asset generation. "
-                "Your job is to translate a user request, asset_type, and style_target into optimized generation settings "
-                "for the selected provider. Ground the plan in the provided asset_type constraints, provider constraints, "
-                "style_context dataset entry, and user prompt. The style_context is the source of truth for the target "
-                "style's resolution, perspective, outlines, lighting, palette, rendering, detail density, shape language, "
-                "and notes. Do not invent unsupported game-specific details that were not supplied by the project context. "
-                "Use the asset_type constraints to choose composition, dimensions, and background treatment: icons should be "
-                "small transparent subjects; ground atlases should feel repeatable/material-focused; block textures should "
-                "read as placeable blocks; reference scenes can include broader composition and background context. "
-                "Return JSON with description, width, height, filename_stub, and no_background. "
-                "The description should approximate the target style without copying existing game assets verbatim. "
-                "Width and height must be integers between 16 and 400."
+                "You are an expert technical artist and AI workflow planner for game asset generation. "
+                "Infer the best asset_type and workflow from the user's prompt unless the requested asset_type is not auto. "
+                "Supported asset types are icon, ground_atlas, spritesheet, block_texture, and reference_scene. "
+                "Supported workflows are single_image, ground_atlas, spritesheet, block_texture_two_face, and reference_scene. "
+                "For block_texture, prefer block_texture_two_face and provide separate top and front descriptions for two API calls. "
+                "For ground_atlas, save the full atlas by default; set postprocess.slice true only when the user asks for sliced tiles. "
+                "For spritesheet, save the full sheet by default; set postprocess.crop_cells true only when the user asks for cropped cells. "
+                "Use the style_context only when a real style target is selected. If style_target is none, do not invent a game style. "
+                "Return JSON with asset_type, workflow, provider, style_target, description, descriptions, width, height, "
+                "filename_stub, no_background, postprocess, outputs_expected, and notes. Width and height must be 16-400."
             ),
             {
-                "user_prompt": prompt,
-                "asset_type": normalized_asset_type,
-                "asset_type_constraints": _asset_type_constraints(normalized_asset_type),
+                "user_prompt": request.prompt,
+                "requested_asset_type": requested_asset_type,
+                "workflow_mode": workflow_mode,
+                "supported_asset_types": sorted(SUPPORTED_ASSET_TYPES),
+                "asset_type_constraints": {key: _asset_type_constraints(key) for key in sorted(SUPPORTED_ASSET_TYPES)},
                 "target_game_style": normalized_style,
-                "style_context": style_context,
+                "style_context": fallback["style_context"],
                 "provider_constraints": _provider_constraints(normalized_provider),
                 "provider": normalized_provider,
                 "fallback": fallback,
@@ -403,44 +590,52 @@ def _plan_generation(prompt: str, asset_type: str, style_target: str, provider: 
             if not failure_reason
             else "Used fallback plan because LLM planning failed: %s" % failure_reason
         )
+        fallback["notes"] = [fallback["planning_note"]]
         return fallback
 
+    planned_asset_type = _normalize_asset_type(plan.get("asset_type") if requested_asset_type == "auto" else requested_asset_type)
+    default_dimensions = _default_generation_dimensions(planned_asset_type)
+    fallback_dimensions = _parse_prompt_dimensions(request.prompt, default_dimensions["width"], default_dimensions["height"])
+    asset_spec = _asset_type_spec(planned_asset_type)
+    workflow = _normalize_workflow(planned_asset_type, plan.get("workflow") or fallback["workflow"])
+    fallback_postprocess = _default_postprocess_config(request.prompt, planned_asset_type)
+    postprocess = _coerce_postprocess_config(planned_asset_type, plan.get("postprocess"), fallback_postprocess)
+    descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+    primary_description = str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip()
+
     return {
-        "description": str(plan.get("description") or fallback["description"]).strip(),
-        "width": _clamp_size(plan.get("width"), fallback["width"]),
-        "height": _clamp_size(plan.get("height"), fallback["height"]),
+        "description": primary_description,
+        "descriptions": {
+            "primary": primary_description,
+            "top": str(descriptions.get("top") or "%s, top face only, seamless tile material" % primary_description).strip(),
+            "front": str(descriptions.get("front") or "%s, front face only, vertical side material" % primary_description).strip(),
+        },
+        "width": _clamp_size(plan.get("width"), fallback_dimensions["width"]),
+        "height": _clamp_size(plan.get("height"), fallback_dimensions["height"]),
         "filename_stub": _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
-        "no_background": bool(plan.get("no_background", fallback["no_background"])),
-        "asset_type": normalized_asset_type,
+        "no_background": bool(plan.get("no_background", asset_spec["no_background"])),
+        "asset_type": planned_asset_type,
+        "workflow": workflow,
         "style_target": normalized_style,
-        "style_context": style_context,
+        "style_context": fallback["style_context"],
         "provider": normalized_provider,
+        "postprocess": postprocess,
+        "outputs_expected": plan.get("outputs_expected") if isinstance(plan.get("outputs_expected"), list) else _workflow_expected_outputs(planned_asset_type, postprocess),
+        "notes": plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."],
         "planning_source": "llm",
         "planning_note": "Used LLM-generated plan.",
     }
 
 
-def _fallback_generation_plan(prompt: str, asset_type: str, style_target: str, provider: str) -> Dict[str, Any]:
-    normalized_asset_type = _normalize_asset_type(asset_type)
-    normalized_style = _normalize_style_target(style_target)
-    normalized_provider = _normalize_generation_provider(provider)
-    style_context = _style_context(normalized_style)
-    default_dimensions = _default_generation_dimensions(normalized_asset_type)
-    dimensions = _parse_prompt_dimensions(prompt, default_dimensions["width"], default_dimensions["height"])
-    asset_spec = _asset_type_spec(normalized_asset_type)
-    return {
-        "description": prompt.strip(),
-        "width": dimensions["width"],
-        "height": dimensions["height"],
-        "filename_stub": _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
-        "no_background": bool(asset_spec["no_background"]),
-        "asset_type": normalized_asset_type,
-        "style_target": normalized_style,
-        "style_context": style_context,
-        "provider": normalized_provider,
-        "planning_source": "fallback",
-        "planning_note": "Used fallback generation plan after provider rejected the planned payload.",
-    }
+def _provider_rejection_fallback_plan(request: GenerateAssetRequest, planned_asset_type: str, provider: str) -> Dict[str, Any]:
+    return _fallback_generation_plan(
+        request.prompt,
+        planned_asset_type,
+        request.workflow_mode,
+        request.style_target,
+        provider,
+        "Used fallback generation plan after provider rejected the planned payload.",
+    )
 
 
 def _generate_with_pixellab(description: str, width: int, height: int, no_background: bool) -> bytes:
@@ -466,6 +661,81 @@ def _generate_with_pixellab(description: str, width: int, height: int, no_backgr
     return _decode_base64_image(payload.get("image"))
 
 
+def _openai_image_size(width: int, height: int) -> str:
+    if width > height:
+        return "1536x1024"
+    if height > width:
+        return "1024x1536"
+    return "1024x1024"
+
+
+def _resize_png_bytes(image_bytes: bytes, width: int, height: int) -> bytes:
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        converted = image.convert("RGBA")
+        if converted.size != (width, height):
+            converted = converted.resize((width, height), RESAMPLING.LANCZOS)
+        output = io.BytesIO()
+        converted.save(output, format="PNG")
+        return output.getvalue()
+
+
+def _decode_openai_image_payload(image_data: Dict[str, Any]) -> bytes:
+    if not isinstance(image_data, dict):
+        raise ValueError("OpenAI image payload is not an object")
+
+    b64_json = image_data.get("b64_json")
+    if isinstance(b64_json, str) and b64_json:
+        try:
+            return base64.b64decode(b64_json)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("OpenAI image API returned invalid base64 image data") from exc
+
+    image_url = image_data.get("url")
+    if isinstance(image_url, str) and image_url:
+        parsed_url = urlparse(image_url)
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            raise ValueError("OpenAI image API returned an invalid image URL")
+        image_response = requests.get(image_url, timeout=(10, 180), allow_redirects=False)
+        image_response.raise_for_status()
+        return image_response.content
+
+    raise ValueError("OpenAI image API response did not include b64_json or url")
+
+
+def _generate_with_openai_image(description: str, width: int, height: int, no_background: bool) -> bytes:
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured")
+
+    payload: Dict[str, Any] = {
+        "model": OPENAI_IMAGE_MODEL,
+        "prompt": description,
+        "size": _openai_image_size(width, height),
+        "quality": OPENAI_IMAGE_QUALITY,
+        "n": 1,
+        "output_format": "png",
+    }
+    if no_background:
+        payload["background"] = "transparent"
+
+    response = requests.post(
+        OPENAI_BASE_URL + "/images/generations",
+        headers={
+            "Authorization": "Bearer " + OPENAI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=(10, 180),
+    )
+    response.raise_for_status()
+
+    payload = response.json()
+    data = payload.get("data") or []
+    if not data or not isinstance(data[0], dict):
+        raise ValueError("OpenAI image API returned no image data")
+
+    return _resize_png_bytes(_decode_openai_image_payload(data[0]), width, height)
+
+
 def _generate_with_provider(provider: str, description: str, width: int, height: int, no_background: bool) -> bytes:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
@@ -475,7 +745,158 @@ def _generate_with_provider(provider: str, description: str, width: int, height:
             height=height,
             no_background=no_background,
         )
+    if normalized_provider == "openai_image":
+        return _generate_with_openai_image(
+            description=description,
+            width=width,
+            height=height,
+            no_background=no_background,
+        )
     raise ValueError("Unsupported image generation provider: %s" % provider)
+
+
+def _png_image_from_bytes(image_bytes: bytes) -> Image.Image:
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        return image.convert("RGBA")
+
+
+def _save_generated_png(image_bytes: bytes, output_path: Path) -> Dict[str, str]:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(image_bytes)
+    return {"file": output_path.name, "file_path": _to_res_path(output_path)}
+
+
+def _append_output(outputs: List[Dict[str, Any]], output_path: Path, role: str) -> None:
+    outputs.append({"role": role, "file": output_path.name, "file_path": _to_res_path(output_path)})
+
+
+def _crop_grid_outputs(image: Image.Image, target_folder: Path, filename_stub: str, role_prefix: str, columns: int, rows: int) -> List[Dict[str, Any]]:
+    outputs: List[Dict[str, Any]] = []
+    columns = max(1, columns)
+    rows = max(1, rows)
+    cell_width = max(1, image.width // columns)
+    cell_height = max(1, image.height // rows)
+
+    for row in range(rows):
+        for column in range(columns):
+            left = column * cell_width
+            top = row * cell_height
+            right = image.width if column == columns - 1 else left + cell_width
+            bottom = image.height if row == rows - 1 else top + cell_height
+            cell = image.crop((left, top, right, bottom))
+            cell_path = target_folder / ("%s_%s_r%02d_c%02d.png" % (filename_stub, role_prefix, row, column))
+            _save_png(cell, cell_path)
+            _append_output(outputs, cell_path, "%s_cell" % role_prefix)
+
+    return outputs
+
+
+def _slice_tile_outputs(image: Image.Image, target_folder: Path, filename_stub: str, tile_width: int, tile_height: int) -> List[Dict[str, Any]]:
+    outputs: List[Dict[str, Any]] = []
+    tile_width = max(1, tile_width)
+    tile_height = max(1, tile_height)
+    rows = max(1, image.height // tile_height)
+    columns = max(1, image.width // tile_width)
+
+    for row in range(rows):
+        for column in range(columns):
+            left = column * tile_width
+            top = row * tile_height
+            tile = image.crop((left, top, min(image.width, left + tile_width), min(image.height, top + tile_height)))
+            tile_path = target_folder / ("%s_tile_r%02d_c%02d.png" % (filename_stub, row, column))
+            _save_png(tile, tile_path)
+            _append_output(outputs, tile_path, "atlas_tile")
+
+    return outputs
+
+
+def _compose_two_face_block(top_bytes: bytes, front_bytes: bytes, config: Dict[str, Any]) -> Image.Image:
+    final_width = int(config.get("final_width") or 32)
+    top_height = int(config.get("top_height") or 16)
+    front_height = int(config.get("front_height") or 32)
+    top_face = _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST)
+    front_face = _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST)
+    composed = Image.new("RGBA", (final_width, top_height + front_height), (0, 0, 0, 0))
+    composed.paste(top_face, (0, 0), top_face)
+    composed.paste(front_face, (0, top_height), front_face)
+    return composed
+
+
+def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> List[Dict[str, Any]]:
+    workflow = _normalize_workflow(plan["asset_type"], plan.get("workflow"))
+    provider = _normalize_generation_provider(plan.get("provider"))
+    filename_stub = _safe_stem(str(plan.get("filename_stub") or "generated_asset"), "generated_asset")
+    postprocess = plan.get("postprocess") if isinstance(plan.get("postprocess"), dict) else {}
+    outputs: List[Dict[str, Any]] = []
+
+    if workflow == "block_texture_two_face":
+        final_width = _clamp_size(postprocess.get("final_width"), 32)
+        top_height = _clamp_size(postprocess.get("top_height"), 16)
+        front_height = _clamp_size(postprocess.get("front_height"), 32)
+        face_config = {"final_width": final_width, "top_height": top_height, "front_height": front_height}
+        descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+        top_bytes = _generate_with_provider(
+            provider=provider,
+            description=str(descriptions.get("top") or plan["description"]),
+            width=final_width,
+            height=top_height,
+            no_background=False,
+        )
+        front_bytes = _generate_with_provider(
+            provider=provider,
+            description=str(descriptions.get("front") or plan["description"]),
+            width=final_width,
+            height=front_height,
+            no_background=False,
+        )
+
+        top_path = target_folder / ("%s_top.png" % filename_stub)
+        front_path = target_folder / ("%s_front.png" % filename_stub)
+        composed_path = target_folder / ("%s.png" % filename_stub)
+        _save_generated_png(top_bytes, top_path)
+        _save_generated_png(front_bytes, front_path)
+        _save_png(_compose_two_face_block(top_bytes, front_bytes, face_config), composed_path)
+        _append_output(outputs, composed_path, "block_texture")
+        _append_output(outputs, top_path, "top_face_source")
+        _append_output(outputs, front_path, "front_face_source")
+        return outputs
+
+    image_bytes = _generate_with_provider(
+        provider=provider,
+        description=plan["description"],
+        width=plan["width"],
+        height=plan["height"],
+        no_background=bool(plan["no_background"]),
+    )
+    full_path = target_folder / ("%s.png" % filename_stub)
+    _save_generated_png(image_bytes, full_path)
+    _append_output(outputs, full_path, "full_image")
+
+    if workflow == "ground_atlas" and bool(postprocess.get("slice", False)):
+        image = _png_image_from_bytes(image_bytes)
+        outputs.extend(
+            _slice_tile_outputs(
+                image,
+                target_folder,
+                filename_stub,
+                int(postprocess.get("tile_width") or 32),
+                int(postprocess.get("tile_height") or 32),
+            )
+        )
+    elif workflow == "spritesheet" and bool(postprocess.get("crop_cells", False)):
+        image = _png_image_from_bytes(image_bytes)
+        outputs.extend(
+            _crop_grid_outputs(
+                image,
+                target_folder,
+                filename_stub,
+                "cell",
+                int(postprocess.get("columns") or 4),
+                int(postprocess.get("rows") or 4),
+            )
+        )
+
+    return outputs
 
 
 def _load_image(path: Path) -> Image.Image:
@@ -752,59 +1173,50 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
 
     try:
         target_folder = _resolve_res_path(request.folder_path, expect_directory=True)
-        asset_type = _normalize_asset_type(request.asset_type)
+        requested_asset_type = _normalize_asset_type(request.asset_type, allow_auto=True)
         style_target = _normalize_style_target(request.style_target)
         provider = _normalize_generation_provider(request.provider)
         metadata = dict(request.metadata or {})
-        plan = _plan_generation(request.prompt, asset_type, style_target, provider)
+        plan = _plan_generation_workflow(request)
         print(
-            "Generation planner source=%s asset_type=%s style=%s provider=%s description=%s"
+            "Generation planner source=%s asset_type=%s workflow=%s style=%s provider=%s description=%s"
             % (
                 plan.get("planning_source", "unknown"),
-                plan.get("asset_type", asset_type),
+                plan.get("asset_type", requested_asset_type),
+                plan.get("workflow", "unknown"),
                 plan.get("style_target", style_target),
                 plan.get("provider", provider),
                 plan.get("description", ""),
             )
         )
         try:
-            image_bytes = _generate_with_provider(
-                provider=plan["provider"],
-                description=plan["description"],
-                width=plan["width"],
-                height=plan["height"],
-                no_background=bool(plan["no_background"]),
-            )
+            outputs = _execute_generation_workflow(plan, target_folder)
         except requests.HTTPError as exc:
             response = exc.response
             if response is not None and response.status_code == 422:
                 print("PixelLab rejected planned payload:", response.text)
-                fallback_plan = _fallback_generation_plan(request.prompt, asset_type, style_target, provider)
-                image_bytes = _generate_with_provider(
-                    provider=fallback_plan["provider"],
-                    description=fallback_plan["description"],
-                    width=fallback_plan["width"],
-                    height=fallback_plan["height"],
-                    no_background=bool(fallback_plan["no_background"]),
-                )
+                fallback_plan = _provider_rejection_fallback_plan(request, plan.get("asset_type", requested_asset_type), provider)
+                outputs = _execute_generation_workflow(fallback_plan, target_folder)
                 plan = fallback_plan
             else:
                 raise
 
-        file_name = plan["filename_stub"] + ".png"
-        save_path = target_folder / file_name
-        save_path.write_bytes(image_bytes)
+        if not outputs:
+            raise ValueError("Generation workflow produced no output files")
+        primary_output = outputs[0]
 
         return {
             "status": "success",
             "type": "asset",
-            "file": file_name,
-            "file_path": _to_res_path(save_path),
-            "asset_type": asset_type,
-            "provider": provider,
+            "file": primary_output["file"],
+            "file_path": primary_output["file_path"],
+            "asset_type": plan.get("asset_type", requested_asset_type),
+            "workflow": plan.get("workflow", "single_image"),
+            "provider": plan.get("provider", provider),
             "style_target": style_target,
             "metadata": metadata,
             "plan": plan,
+            "outputs": outputs,
         }
     except Exception as exc:
         print("Asset generation failed:", exc)

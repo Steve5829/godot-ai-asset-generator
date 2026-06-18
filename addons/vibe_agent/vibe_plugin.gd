@@ -3,19 +3,15 @@ extends EditorPlugin
 
 const BACKEND_URL := "http://127.0.0.1:8000/vibe"
 const IMAGE_EXTENSIONS := ["png", "jpg", "jpeg", "webp"]
-const GENERATION_ASSET_TYPE_OPTIONS := [
-	{"value": "icon", "label": "Icon"},
-	{"value": "ground_atlas", "label": "Ground Atlas"},
-	{"value": "block_texture", "label": "Block Texture"},
-	{"value": "reference_scene", "label": "Reference Scene"},
-]
 const GENERATION_STYLE_OPTIONS := [
+	{"value": "none", "label": "No Style Target"},
 	{"value": "core_keeper", "label": "Core Keeper-like"},
 	{"value": "terraria", "label": "Terraria-like"},
 	{"value": "minecraft", "label": "Minecraft-like"},
 ]
 const GENERATION_PROVIDER_OPTIONS := [
 	{"value": "pixellab", "label": "PixelLab"},
+	{"value": "openai_image", "label": "GPT Image"},
 ]
 const ALLOWED_METHODS := {
 	"add_child": false,
@@ -78,7 +74,6 @@ var prompt_dialog: ConfirmationDialog
 var prompt_summary_label: Label
 var prompt_example_label: Label
 var generation_settings_container: VBoxContainer
-var asset_type_select: OptionButton
 var style_target_select: OptionButton
 var provider_select: OptionButton
 var prompt_input: TextEdit
@@ -152,15 +147,6 @@ func _create_prompt_dialog():
 	generation_settings_container = VBoxContainer.new()
 	generation_settings_container.visible = false
 	root.add_child(generation_settings_container)
-
-	var asset_type_label = Label.new()
-	asset_type_label.text = "Asset Type"
-	generation_settings_container.add_child(asset_type_label)
-
-	asset_type_select = OptionButton.new()
-	asset_type_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_populate_option_button(asset_type_select, GENERATION_ASSET_TYPE_OPTIONS)
-	generation_settings_container.add_child(asset_type_select)
 
 	var style_label = Label.new()
 	style_label.text = "Style Target"
@@ -297,8 +283,6 @@ func _open_prompt_dialog(kind: String, summary: String, example: String, confirm
 	prompt_example_label.text = example
 	generation_settings_container.visible = kind == "generate"
 	if kind == "generate":
-		if asset_type_select.item_count > 0:
-			asset_type_select.select(0)
 		if style_target_select.item_count > 0:
 			style_target_select.select(0)
 		if provider_select.item_count > 0:
@@ -317,7 +301,7 @@ func _on_generate_context(selection):
 	_open_prompt_dialog(
 		"generate",
 		"Generate a new asset in %s" % folder_path,
-		"Example: I want a 32x32 pixel style pickaxe icon",
+		"Example: Make muddy ground tiles with a few variations, or a Core Keeper-style stone block with top and front faces",
 		"Generate",
 		{"folder_path": folder_path},
 	)
@@ -366,8 +350,9 @@ func _on_prompt_confirmed():
 				{
 					"prompt": prompt,
 					"folder_path": String(active_dialog_context.get("folder_path", "res://")),
-					"asset_type": _selected_option_value(asset_type_select, "icon"),
-					"style_target": _selected_option_value(style_target_select, "core_keeper"),
+					"asset_type": "auto",
+					"workflow_mode": "auto",
+					"style_target": _selected_option_value(style_target_select, "none"),
 					"provider": _selected_option_value(provider_select, "pixellab"),
 				}
 			)
