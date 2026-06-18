@@ -12,6 +12,15 @@ from fastapi import FastAPI
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
+try:
+    from style_matrix import STYLE_MATRIX, style_profile_dict
+except Exception as exc:
+    print("Failed to import style matrix:", exc)
+    STYLE_MATRIX = {}
+
+    def style_profile_dict(style_key: str) -> Dict[str, str]:
+        raise KeyError("Style matrix is unavailable")
+
 BASE_DIR = Path(__file__).resolve().parent
 for env_path in (
     BASE_DIR / ".env",
@@ -53,19 +62,64 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 RESAMPLING = getattr(Image, "Resampling", Image)
-SUPPORTED_STYLE_TARGETS = {
+SUPPORTED_STYLE_TARGETS = set(STYLE_MATRIX.keys()) or {
     "core_keeper",
     "terraria",
     "minecraft",
 }
+ASSET_TYPE_SPECS = {
+    "icon": {
+        "label": "Icon",
+        "default_width": 128,
+        "default_height": 128,
+        "no_background": True,
+        "prompt_guidance": (
+            "Create a single readable inventory or UI icon. Center the subject, use a clear silhouette, "
+            "avoid scene backgrounds, and keep details legible at small sizes."
+        ),
+    },
+    "ground_atlas": {
+        "label": "Ground Atlas",
+        "default_width": 256,
+        "default_height": 256,
+        "no_background": False,
+        "prompt_guidance": (
+            "Create a tileable-looking ground material atlas or terrain swatch. Favor repeatable texture detail, "
+            "subtle variation, and avoid a centered object composition."
+        ),
+    },
+    "block_texture": {
+        "label": "Block Texture",
+        "default_width": 64,
+        "default_height": 96,
+        "no_background": False,
+        "prompt_guidance": (
+            "Create a compact block or voxel-style texture with readable top/front material cues. "
+            "Use crisp edges and proportions suitable for a placeable terrain or building block."
+        ),
+    },
+    "reference_scene": {
+        "label": "Reference Scene",
+        "default_width": 400,
+        "default_height": 400,
+        "no_background": False,
+        "prompt_guidance": (
+            "Create a small concept/reference scene showing composition, palette, mood, and materials. "
+            "It can include background context and should prioritize direction over direct sprite readiness."
+        ),
+    },
+}
+SUPPORTED_ASSET_TYPES = set(ASSET_TYPE_SPECS.keys())
 SUPPORTED_GENERATION_PROVIDERS = {"pixellab"}
 
 
 class GenerateAssetRequest(BaseModel):
     prompt: str = Field(min_length=1)
     folder_path: str = "res://"
+    asset_type: str = "icon"
     style_target: str = "core_keeper"
     provider: str = "pixellab"
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ModifyAssetRequest(BaseModel):
@@ -114,11 +168,39 @@ def _normalize_style_target(style_target: str) -> str:
     return "core_keeper"
 
 
+def _style_context(style_target: str) -> Dict[str, Any]:
+    normalized = _normalize_style_target(style_target)
+    try:
+        return style_profile_dict(normalized)
+    except Exception:
+        return {
+            "key": normalized,
+            "title": normalized.replace("_", " ").title(),
+            "notes": "No style profile was available; use only the supplied key and user prompt.",
+        }
+
+
+def _normalize_asset_type(asset_type: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(asset_type or "").strip().lower()).strip("_")
+    if normalized in SUPPORTED_ASSET_TYPES:
+        return normalized
+    return "icon"
+
+
 def _normalize_generation_provider(provider: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(provider or "").strip().lower()).strip("_")
     if normalized in SUPPORTED_GENERATION_PROVIDERS:
         return normalized
     return "pixellab"
+
+
+def _asset_type_spec(asset_type: str) -> Dict[str, Any]:
+    return ASSET_TYPE_SPECS[_normalize_asset_type(asset_type)]
+
+
+def _asset_type_constraints(asset_type: str) -> str:
+    spec = _asset_type_spec(asset_type)
+    return "%s asset. %s" % (spec["label"], spec["prompt_guidance"])
 
 
 def _provider_constraints(provider: str) -> str:
@@ -248,17 +330,35 @@ def _parse_prompt_dimensions(prompt: str, default_width: int, default_height: in
     return {"width": default_width, "height": default_height}
 
 
-def _plan_generation(prompt: str, style_target: str, provider: str) -> Dict[str, Any]:
+def _default_generation_dimensions(asset_type: str) -> Dict[str, int]:
+    spec = _asset_type_spec(asset_type)
+    return {
+        "width": _clamp_size(spec["default_width"], spec["default_width"]),
+        "height": _clamp_size(spec["default_height"], spec["default_height"]),
+    }
+
+
+def _plan_generation(prompt: str, asset_type: str, style_target: str, provider: str) -> Dict[str, Any]:
+    normalized_asset_type = _normalize_asset_type(asset_type)
     normalized_style = _normalize_style_target(style_target)
     normalized_provider = _normalize_generation_provider(provider)
-    fallback_dimensions = _parse_prompt_dimensions(prompt, 128, 128)
+    style_context = _style_context(normalized_style)
+    default_dimensions = _default_generation_dimensions(normalized_asset_type)
+    fallback_dimensions = _parse_prompt_dimensions(
+        prompt,
+        default_dimensions["width"],
+        default_dimensions["height"],
+    )
+    asset_spec = _asset_type_spec(normalized_asset_type)
     fallback = {
         "description": prompt.strip(),
         "width": fallback_dimensions["width"],
         "height": fallback_dimensions["height"],
-        "filename_stub": _safe_stem("%s_%s" % (normalized_style, prompt), "generated_asset"),
-        "no_background": True,
+        "filename_stub": _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
+        "no_background": bool(asset_spec["no_background"]),
+        "asset_type": normalized_asset_type,
         "style_target": normalized_style,
+        "style_context": style_context,
         "provider": normalized_provider,
         "planning_source": "fallback",
         "planning_note": "Used fallback plan before LLM planning completed.",
@@ -269,17 +369,24 @@ def _plan_generation(prompt: str, style_target: str, provider: str) -> Dict[str,
         plan = _chat_json(
             (
                 "You are an expert technical artist and AI planner for pixel-art asset generation. "
-                "Your job is to translate a user request and a style_target into optimized generation settings "
-                "for the selected provider. Use your own knowledge of the target game's visual language to infer "
-                "useful style cues such as perspective, palette direction, lighting, silhouette clarity, and level of detail. "
-                "Do not rely on backend-supplied hardcoded style phrases. "
+                "Your job is to translate a user request, asset_type, and style_target into optimized generation settings "
+                "for the selected provider. Ground the plan in the provided asset_type constraints, provider constraints, "
+                "style_context dataset entry, and user prompt. The style_context is the source of truth for the target "
+                "style's resolution, perspective, outlines, lighting, palette, rendering, detail density, shape language, "
+                "and notes. Do not invent unsupported game-specific details that were not supplied by the project context. "
+                "Use the asset_type constraints to choose composition, dimensions, and background treatment: icons should be "
+                "small transparent subjects; ground atlases should feel repeatable/material-focused; block textures should "
+                "read as placeable blocks; reference scenes can include broader composition and background context. "
                 "Return JSON with description, width, height, filename_stub, and no_background. "
                 "The description should approximate the target style without copying existing game assets verbatim. "
                 "Width and height must be integers between 16 and 400."
             ),
             {
                 "user_prompt": prompt,
+                "asset_type": normalized_asset_type,
+                "asset_type_constraints": _asset_type_constraints(normalized_asset_type),
                 "target_game_style": normalized_style,
+                "style_context": style_context,
                 "provider_constraints": _provider_constraints(normalized_provider),
                 "provider": normalized_provider,
                 "fallback": fallback,
@@ -303,25 +410,33 @@ def _plan_generation(prompt: str, style_target: str, provider: str) -> Dict[str,
         "width": _clamp_size(plan.get("width"), fallback["width"]),
         "height": _clamp_size(plan.get("height"), fallback["height"]),
         "filename_stub": _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
-        "no_background": bool(plan.get("no_background", True)),
+        "no_background": bool(plan.get("no_background", fallback["no_background"])),
+        "asset_type": normalized_asset_type,
         "style_target": normalized_style,
+        "style_context": style_context,
         "provider": normalized_provider,
         "planning_source": "llm",
         "planning_note": "Used LLM-generated plan.",
     }
 
 
-def _fallback_generation_plan(prompt: str, style_target: str, provider: str) -> Dict[str, Any]:
+def _fallback_generation_plan(prompt: str, asset_type: str, style_target: str, provider: str) -> Dict[str, Any]:
+    normalized_asset_type = _normalize_asset_type(asset_type)
     normalized_style = _normalize_style_target(style_target)
     normalized_provider = _normalize_generation_provider(provider)
-    dimensions = _parse_prompt_dimensions(prompt, 128, 128)
+    style_context = _style_context(normalized_style)
+    default_dimensions = _default_generation_dimensions(normalized_asset_type)
+    dimensions = _parse_prompt_dimensions(prompt, default_dimensions["width"], default_dimensions["height"])
+    asset_spec = _asset_type_spec(normalized_asset_type)
     return {
         "description": prompt.strip(),
         "width": dimensions["width"],
         "height": dimensions["height"],
-        "filename_stub": _safe_stem("%s_%s" % (normalized_style, prompt), "generated_asset"),
-        "no_background": True,
+        "filename_stub": _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
+        "no_background": bool(asset_spec["no_background"]),
+        "asset_type": normalized_asset_type,
         "style_target": normalized_style,
+        "style_context": style_context,
         "provider": normalized_provider,
         "planning_source": "fallback",
         "planning_note": "Used fallback generation plan after provider rejected the planned payload.",
@@ -637,13 +752,16 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
 
     try:
         target_folder = _resolve_res_path(request.folder_path, expect_directory=True)
+        asset_type = _normalize_asset_type(request.asset_type)
         style_target = _normalize_style_target(request.style_target)
         provider = _normalize_generation_provider(request.provider)
-        plan = _plan_generation(request.prompt, style_target, provider)
+        metadata = dict(request.metadata or {})
+        plan = _plan_generation(request.prompt, asset_type, style_target, provider)
         print(
-            "Generation planner source=%s style=%s provider=%s description=%s"
+            "Generation planner source=%s asset_type=%s style=%s provider=%s description=%s"
             % (
                 plan.get("planning_source", "unknown"),
+                plan.get("asset_type", asset_type),
                 plan.get("style_target", style_target),
                 plan.get("provider", provider),
                 plan.get("description", ""),
@@ -661,7 +779,7 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             response = exc.response
             if response is not None and response.status_code == 422:
                 print("PixelLab rejected planned payload:", response.text)
-                fallback_plan = _fallback_generation_plan(request.prompt, style_target, provider)
+                fallback_plan = _fallback_generation_plan(request.prompt, asset_type, style_target, provider)
                 image_bytes = _generate_with_provider(
                     provider=fallback_plan["provider"],
                     description=fallback_plan["description"],
@@ -682,6 +800,10 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             "type": "asset",
             "file": file_name,
             "file_path": _to_res_path(save_path),
+            "asset_type": asset_type,
+            "provider": provider,
+            "style_target": style_target,
+            "metadata": metadata,
             "plan": plan,
         }
     except Exception as exc:
