@@ -292,6 +292,48 @@ def _description_with_asset_constraints(asset_type: str, description: str) -> st
     return "%s. %s" % (cleaned_description.rstrip("."), ground_constraints)
 
 
+def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width: int, source_height: int) -> str:
+    descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+    primary_description = str(plan.get("description") or descriptions.get("primary") or "").strip()
+    planned_face_description = str(descriptions.get(face) or "").strip()
+    material_parts: List[str] = []
+    if primary_description:
+        material_parts.append("Material idea: %s" % primary_description.rstrip("."))
+    if planned_face_description and planned_face_description.lower() != primary_description.lower():
+        material_parts.append("Face material details: %s" % planned_face_description.rstrip("."))
+    if not material_parts:
+        material_parts.append("Material idea: game block material texture")
+
+    style_context = plan.get("style_context") if isinstance(plan.get("style_context"), dict) else {}
+    style_title = str(style_context.get("title") or style_context.get("key") or "").strip()
+    has_style_target = bool(style_context.get("target_style_selected", style_title and style_title.lower() not in {"none", "no style target"}))
+    style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
+
+    face_label = "top horizontal face" if face == "top" else "front vertical face"
+    face_rules = (
+        "Read as horizontal/top material only: top-down surface texture, no vertical wall, no cube sides, no scene. "
+        if face == "top"
+        else "Read as vertical/front material only: side wall material, no grassy field top and no cube outline. "
+    )
+    return (
+        "Create a %sx%s seamless pixel art material texture tile. "
+        "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
+        "Draw only the %s material for a game block. "
+        "%s.%s "
+        "%s"
+        "Fill the entire canvas edge-to-edge with texture. "
+        "No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. "
+        "Crisp pixel art, hard edges, limited palette, tileable material texture."
+    ) % (
+        source_width,
+        source_height,
+        face_label,
+        ". ".join(material_parts),
+        style_part,
+        face_rules,
+    )
+
+
 def _provider_constraints(provider: str) -> str:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
@@ -907,17 +949,28 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         face_config = {"final_width": final_width, "top_height": top_height, "front_height": front_height}
         top_source_dimensions = _block_face_source_dimensions(provider, final_width, top_height)
         front_source_dimensions = _block_face_source_dimensions(provider, final_width, front_height)
-        descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+        top_description = _strict_block_face_description(
+            plan,
+            "top",
+            top_source_dimensions["width"],
+            top_source_dimensions["height"],
+        )
+        front_description = _strict_block_face_description(
+            plan,
+            "front",
+            front_source_dimensions["width"],
+            front_source_dimensions["height"],
+        )
         top_bytes = _generate_with_provider(
             provider=provider,
-            description=str(descriptions.get("top") or plan["description"]),
+            description=top_description,
             width=top_source_dimensions["width"],
             height=top_source_dimensions["height"],
             no_background=False,
         )
         front_bytes = _generate_with_provider(
             provider=provider,
-            description=str(descriptions.get("front") or plan["description"]),
+            description=front_description,
             width=front_source_dimensions["width"],
             height=front_source_dimensions["height"],
             no_background=False,
