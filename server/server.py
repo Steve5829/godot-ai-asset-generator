@@ -61,10 +61,14 @@ PIXELLAB_API_KEY = os.getenv("PIXELLAB_API_KEY") or os.getenv("PIXELLAB_SECRET")
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
+OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL") or OPENAI_MODEL
 OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1"
 OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+REFERENCE_IMAGE_ROOT = BASE_DIR / "reference_images"
+MAX_REFERENCE_IMAGES = 3
+REFERENCE_IMAGE_MAX_EDGE = 512
 RESAMPLING = getattr(Image, "Resampling", Image)
 PIXELLAB_MIN_IMAGE_SIZE = 32
 PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
@@ -306,6 +310,165 @@ def _asset_type_constraints(asset_type: str) -> str:
     return "%s asset. %s" % (spec["label"], spec["prompt_guidance"])
 
 
+def _reference_response_path(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(BASE_DIR.parent.resolve()).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _list_reference_images(directory: Path) -> List[Path]:
+    if not directory.exists() or not directory.is_dir():
+        return []
+    return sorted(
+        (
+            path
+            for path in directory.iterdir()
+            if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
+        ),
+        key=lambda path: path.name.lower(),
+    )
+
+
+def _select_reference_images(style_target: str, asset_type: str) -> List[Path]:
+    normalized_style = _normalize_style_target(style_target)
+    if normalized_style == "none":
+        return []
+
+    normalized_asset_type = _normalize_asset_type(asset_type)
+    style_root = REFERENCE_IMAGE_ROOT / normalized_style
+    candidates = _list_reference_images(style_root / normalized_asset_type)
+    if not candidates:
+        candidates = _list_reference_images(style_root)
+    if not candidates and normalized_asset_type == "icon":
+        candidates = _list_reference_images(style_root / "icon")
+    return candidates[:MAX_REFERENCE_IMAGES]
+
+
+def _image_data_url(path: Path) -> str:
+    with Image.open(path) as image:
+        converted = image.convert("RGBA")
+        if max(converted.size) > REFERENCE_IMAGE_MAX_EDGE:
+            converted.thumbnail((REFERENCE_IMAGE_MAX_EDGE, REFERENCE_IMAGE_MAX_EDGE), RESAMPLING.LANCZOS)
+
+        has_alpha = converted.getchannel("A").getextrema()[0] < 255
+        output = io.BytesIO()
+        if has_alpha:
+            converted.save(output, format="PNG", optimize=True)
+            mime_type = "image/png"
+        else:
+            converted.convert("RGB").save(output, format="JPEG", quality=85, optimize=True)
+            mime_type = "image/jpeg"
+
+    encoded = base64.b64encode(output.getvalue()).decode("ascii")
+    return "data:%s;base64,%s" % (mime_type, encoded)
+
+
+def _message_content_text(content: Any) -> str:
+    if isinstance(content, list):
+        return "".join(
+            item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"
+        )
+    return str(content or "")
+
+
+def _analyze_reference_images(reference_paths: List[Path], prompt: str, style_target: str, asset_type: str) -> str:
+    if not reference_paths:
+        return ""
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured")
+
+    content: List[Dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": (
+                "Summarize reusable visual traits from these game-art reference images for a new asset prompt. "
+                "Use them as style evidence only; do not ask to copy the source art verbatim. "
+                "Be concise and cover resolution feel, shape language, outline, palette, shading, silhouette, "
+                "material details, and what to avoid.\n"
+                "User prompt: %s\nStyle target: %s\nAsset type: %s"
+                % (prompt, style_target, asset_type)
+            ),
+        }
+    ]
+    for path in reference_paths:
+        content.append({"type": "image_url", "image_url": {"url": _image_data_url(path)}})
+
+    response = requests.post(
+        OPENAI_BASE_URL + "/chat/completions",
+        headers={
+            "Authorization": "Bearer " + OPENAI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": OPENAI_VISION_MODEL,
+            "temperature": 0.1,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a concise game art director. Extract transferable visual traits from references. "
+                        "Never instruct the image model to duplicate, trace, or reproduce an existing asset."
+                    ),
+                },
+                {"role": "user", "content": content},
+            ],
+        },
+        timeout=(10, 45),
+    )
+    response.raise_for_status()
+    payload = response.json()
+    choices = payload.get("choices") or []
+    if not choices:
+        raise ValueError("Vision model returned no choices")
+
+    return _message_content_text(choices[0].get("message", {}).get("content", "")).strip()
+
+
+def _build_reference_context(prompt: str, style_target: str, asset_type: str) -> Optional[Dict[str, Any]]:
+    reference_paths = _select_reference_images(style_target, asset_type)
+    if not reference_paths:
+        return None
+
+    context: Dict[str, Any] = {
+        "style_target": _normalize_style_target(style_target),
+        "asset_type": _normalize_asset_type(asset_type),
+        "reference_images": [{"path": _reference_response_path(path)} for path in reference_paths],
+        "status": "selected",
+    }
+    try:
+        analysis = _analyze_reference_images(reference_paths, prompt, context["style_target"], context["asset_type"])
+    except Exception as exc:
+        print("Reference image analysis failed:", exc)
+        context["status"] = "analysis_failed"
+        context["failure"] = str(exc)
+    else:
+        if analysis:
+            context["status"] = "analyzed"
+            context["analysis"] = analysis
+
+    return context
+
+
+def _reference_prompt_suffix(reference_context: Optional[Dict[str, Any]]) -> str:
+    if not isinstance(reference_context, dict):
+        return ""
+    analysis = str(reference_context.get("analysis") or "").strip()
+    if not analysis:
+        return ""
+    return "Reference image style traits to apply without copying source art verbatim: %s" % analysis.rstrip(".")
+
+
+def _description_with_reference_context(description: str, reference_context: Optional[Dict[str, Any]]) -> str:
+    cleaned_description = str(description or "").strip()
+    suffix = _reference_prompt_suffix(reference_context)
+    if not suffix or suffix in cleaned_description:
+        return cleaned_description
+    if not cleaned_description:
+        return suffix
+    return "%s. %s" % (cleaned_description.rstrip("."), suffix)
+
+
 def _description_with_asset_constraints(asset_type: str, description: str) -> str:
     normalized_asset_type = _normalize_asset_type(asset_type)
     cleaned_description = str(description or "").strip()
@@ -501,13 +664,7 @@ def _chat_json(system_prompt: str, user_payload: Dict[str, Any]) -> Optional[Dic
     if not choices:
         raise ValueError("Text model returned no choices")
 
-    content = choices[0].get("message", {}).get("content", "")
-    if isinstance(content, list):
-        text = "".join(
-            item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"
-        )
-    else:
-        text = str(content)
+    text = _message_content_text(choices[0].get("message", {}).get("content", ""))
 
     return _extract_json_object(text)
 
@@ -660,11 +817,21 @@ def _normalize_workflow(asset_type: str, workflow: str) -> str:
     return _default_workflow_for_asset_type(asset_type)
 
 
-def _fallback_generation_plan(prompt: str, asset_type: str, workflow_mode: str, style_target: str, provider: str, note: str) -> Dict[str, Any]:
+def _fallback_generation_plan(
+    prompt: str,
+    asset_type: str,
+    workflow_mode: str,
+    style_target: str,
+    provider: str,
+    note: str,
+    reference_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     normalized_asset_type = _infer_asset_type_from_prompt(prompt, asset_type)
     normalized_style = _normalize_style_target(style_target)
     normalized_provider = _normalize_generation_provider(provider)
     style_context = _style_context(normalized_style)
+    if reference_context is None:
+        reference_context = _build_reference_context(prompt, normalized_style, normalized_asset_type)
     default_dimensions = _default_generation_dimensions(normalized_asset_type)
     fallback_dimensions = _parse_prompt_dimensions(
         prompt,
@@ -677,8 +844,15 @@ def _fallback_generation_plan(prompt: str, asset_type: str, workflow_mode: str, 
         workflow_mode if _normalize_workflow_mode(workflow_mode) != "auto" else _default_workflow_for_asset_type(normalized_asset_type),
     )
     postprocess = _default_postprocess_config(prompt, normalized_asset_type)
-    description = _description_with_asset_constraints(normalized_asset_type, prompt)
-    return {
+    description = _description_with_reference_context(
+        _description_with_asset_constraints(normalized_asset_type, prompt),
+        reference_context,
+    )
+    notes = [note]
+    if isinstance(reference_context, dict) and reference_context.get("failure"):
+        notes.append("Reference image analysis unavailable: %s" % reference_context["failure"])
+
+    plan = {
         "description": description,
         "descriptions": {
             "primary": description,
@@ -696,10 +870,14 @@ def _fallback_generation_plan(prompt: str, asset_type: str, workflow_mode: str, 
         "provider": normalized_provider,
         "postprocess": postprocess,
         "outputs_expected": _workflow_expected_outputs(normalized_asset_type, postprocess),
-        "notes": [note],
+        "notes": notes,
         "planning_source": "fallback",
         "planning_note": note,
     }
+    if reference_context:
+        plan["reference_context"] = reference_context
+        plan["reference_images"] = reference_context.get("reference_images", [])
+    return plan
 
 
 def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
@@ -731,6 +909,8 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "For ground_atlas, save the full atlas by default; set postprocess.slice true only when the user asks for sliced tiles. "
                 "For spritesheet, save the full sheet by default; set postprocess.crop_cells true only when the user asks for cropped cells. "
                 "Use the style_context only when a real style target is selected. If style_target is none, do not invent a game style. "
+                "When reference_context is present, use it as visual evidence for transferable style traits. Do not copy, trace, "
+                "or reproduce existing reference assets verbatim. "
                 "Return JSON with asset_type, workflow, provider, style_target, description, descriptions, width, height, "
                 "filename_stub, no_background, postprocess, outputs_expected, and notes. Width and height must be 16-400."
             ),
@@ -742,6 +922,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "asset_type_constraints": {key: _asset_type_constraints(key) for key in sorted(SUPPORTED_ASSET_TYPES)},
                 "target_game_style": normalized_style,
                 "style_context": fallback["style_context"],
+                "reference_context": fallback.get("reference_context"),
                 "provider_constraints": _provider_constraints(normalized_provider),
                 "provider": normalized_provider,
                 "fallback": fallback,
@@ -758,7 +939,11 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
             if not failure_reason
             else "Used fallback plan because LLM planning failed: %s" % failure_reason
         )
-        fallback["notes"] = [fallback["planning_note"]]
+        fallback_notes = [fallback["planning_note"]]
+        reference_context = fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None
+        if reference_context and reference_context.get("failure"):
+            fallback_notes.append("Reference image analysis unavailable: %s" % reference_context["failure"])
+        fallback["notes"] = fallback_notes
         return fallback
 
     planned_asset_type = _normalize_asset_type(plan.get("asset_type") if requested_asset_type == "auto" else requested_asset_type)
@@ -773,8 +958,13 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         planned_asset_type,
         str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip(),
     )
+    reference_context = fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None
+    primary_description = _description_with_reference_context(primary_description, reference_context)
+    notes = plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."]
+    if reference_context and reference_context.get("failure"):
+        notes = list(notes) + ["Reference image analysis unavailable: %s" % reference_context["failure"]]
 
-    return {
+    resolved_plan = {
         "description": primary_description,
         "descriptions": {
             "primary": primary_description,
@@ -792,13 +982,22 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         "provider": normalized_provider,
         "postprocess": postprocess,
         "outputs_expected": plan.get("outputs_expected") if isinstance(plan.get("outputs_expected"), list) else _workflow_expected_outputs(planned_asset_type, postprocess),
-        "notes": plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."],
+        "notes": notes,
         "planning_source": "llm",
         "planning_note": "Used LLM-generated plan.",
     }
+    if reference_context:
+        resolved_plan["reference_context"] = reference_context
+        resolved_plan["reference_images"] = reference_context.get("reference_images", [])
+    return resolved_plan
 
 
-def _provider_rejection_fallback_plan(request: GenerateAssetRequest, planned_asset_type: str, provider: str) -> Dict[str, Any]:
+def _provider_rejection_fallback_plan(
+    request: GenerateAssetRequest,
+    planned_asset_type: str,
+    provider: str,
+    reference_context: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     return _fallback_generation_plan(
         request.prompt,
         planned_asset_type,
@@ -806,31 +1005,60 @@ def _provider_rejection_fallback_plan(request: GenerateAssetRequest, planned_ass
         request.style_target,
         provider,
         "Used fallback generation plan after provider rejected the planned payload.",
+        reference_context=reference_context,
     )
+
+
+def _pixellab_error_detail(response: requests.Response, width: int, height: int, attempt: int) -> str:
+    status_code = response.status_code
+    body = _response_text_excerpt(response)
+    if 500 <= status_code <= 599:
+        detail = (
+            "PixelLab API returned an internal server error (%s) after %s attempt%s for %sx%s. "
+            "This is a provider-side generation failure, not prompt planning or dimension validation. "
+            "Retry the request, or choose GPT Image / openai_image provider."
+        ) % (
+            status_code,
+            attempt,
+            "" if attempt == 1 else "s",
+            width,
+            height,
+        )
+    else:
+        detail = "PixelLab API rejected image generation (%s) for %sx%s" % (status_code, width, height)
+    if body:
+        detail = "%s: %s" % (detail, body)
+    return detail
 
 
 def _generate_with_pixellab(description: str, width: int, height: int, no_background: bool) -> bytes:
     if not PIXELLAB_API_KEY:
         raise ValueError("PIXELLAB_API_KEY is not configured")
 
-    response = requests.post(
-        "https://api.pixellab.ai/v1/generate-image-pixflux",
-        headers={"Authorization": "Bearer " + PIXELLAB_API_KEY},
-        json={
-            "description": description,
-            "image_size": {"width": width, "height": height},
-            "no_background": no_background,
-        },
-        timeout=(10, 180),
-    )
-    try:
-        response.raise_for_status()
-    except requests.HTTPError as exc:
-        body = _response_text_excerpt(response)
-        detail = "PixelLab API rejected image generation (%s) for %sx%s" % (response.status_code, width, height)
-        if body:
-            detail = "%s: %s" % (detail, body)
-        raise requests.HTTPError(detail, response=response, request=response.request) from exc
+    max_attempts = 2
+    for attempt in range(1, max_attempts + 1):
+        response = requests.post(
+            "https://api.pixellab.ai/v1/generate-image-pixflux",
+            headers={"Authorization": "Bearer " + PIXELLAB_API_KEY},
+            json={
+                "description": description,
+                "image_size": {"width": width, "height": height},
+                "no_background": no_background,
+            },
+            timeout=(10, 180),
+        )
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            if response.status_code >= 500 and response.status_code <= 599 and attempt < max_attempts:
+                print(
+                    "PixelLab returned %s for %sx%s; retrying once."
+                    % (response.status_code, width, height)
+                )
+                continue
+            detail = _pixellab_error_detail(response, width, height, attempt)
+            raise requests.HTTPError(detail, response=response, request=response.request) from exc
+        break
 
     payload = response.json()
     if not isinstance(payload, dict):
@@ -1403,7 +1631,12 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             response = exc.response
             if response is not None and response.status_code == 422:
                 print("PixelLab rejected planned payload:", _response_text_excerpt(response))
-                fallback_plan = _provider_rejection_fallback_plan(request, plan.get("asset_type", requested_asset_type), provider)
+                fallback_plan = _provider_rejection_fallback_plan(
+                    request,
+                    plan.get("asset_type", requested_asset_type),
+                    provider,
+                    reference_context=plan.get("reference_context") if isinstance(plan.get("reference_context"), dict) else None,
+                )
                 outputs = _execute_generation_workflow(fallback_plan, target_folder)
                 plan = fallback_plan
             else:
