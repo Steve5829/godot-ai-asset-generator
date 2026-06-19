@@ -88,8 +88,9 @@ ASSET_TYPE_SPECS = {
         "default_height": 256,
         "no_background": False,
         "prompt_guidance": (
-            "Create a tileable-looking ground material atlas or terrain swatch. Favor repeatable texture detail, "
-            "subtle variation, and avoid a centered object composition."
+            "Create a top-down orthographic terrain/material atlas or reusable tileable ground swatch. "
+            "Fill the frame with repeatable material variation; no horizon, no scene composition, no paths or roads "
+            "unless explicitly requested, no large trees, trunks, characters, or buildings, and no single focal object."
         ),
     },
     "block_texture": {
@@ -236,6 +237,26 @@ def _asset_type_spec(asset_type: str) -> Dict[str, Any]:
 def _asset_type_constraints(asset_type: str) -> str:
     spec = _asset_type_spec(asset_type)
     return "%s asset. %s" % (spec["label"], spec["prompt_guidance"])
+
+
+def _description_with_asset_constraints(asset_type: str, description: str) -> str:
+    normalized_asset_type = _normalize_asset_type(asset_type)
+    cleaned_description = str(description or "").strip()
+    if normalized_asset_type != "ground_atlas":
+        return cleaned_description
+
+    lowered_description = cleaned_description.lower()
+    if "top-down orthographic terrain/material atlas" in lowered_description and "do not create a composed forest scene" in lowered_description:
+        return cleaned_description
+
+    ground_constraints = (
+        "Generate as a top-down orthographic terrain/material atlas for reusable game ground tiles. "
+        "Fill the entire image with tileable material variation. Do not create a composed forest scene, "
+        "camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object."
+    )
+    if not cleaned_description:
+        return ground_constraints
+    return "%s. %s" % (cleaned_description.rstrip("."), ground_constraints)
 
 
 def _provider_constraints(provider: str) -> str:
@@ -512,9 +533,9 @@ def _fallback_generation_plan(prompt: str, asset_type: str, workflow_mode: str, 
         workflow_mode if _normalize_workflow_mode(workflow_mode) != "auto" else _default_workflow_for_asset_type(normalized_asset_type),
     )
     postprocess = _default_postprocess_config(prompt, normalized_asset_type)
-    description = prompt.strip()
+    description = _description_with_asset_constraints(normalized_asset_type, prompt)
     return {
-        "description": prompt.strip(),
+        "description": description,
         "descriptions": {
             "primary": description,
             "top": "%s, top face only, seamless tile material, viewed straight-on as the top surface" % description,
@@ -560,6 +581,9 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "Supported asset types are icon, ground_atlas, spritesheet, block_texture, and reference_scene. "
                 "Supported workflows are single_image, ground_atlas, spritesheet, block_texture_two_face, and reference_scene. "
                 "For block_texture, prefer block_texture_two_face and provide separate top and front descriptions for two API calls. "
+                "For ground_atlas, create a top-down orthographic terrain/material atlas or reusable tileable ground swatch, not a composed scene. "
+                "If the user asks for a forest ground atlas, produce forest floor material texture variation, not trees, paths, or a forest scene. "
+                "Only reference_scene may include composed scenes, backgrounds, camera views, horizons, or environment concept art. "
                 "For ground_atlas, save the full atlas by default; set postprocess.slice true only when the user asks for sliced tiles. "
                 "For spritesheet, save the full sheet by default; set postprocess.crop_cells true only when the user asks for cropped cells. "
                 "Use the style_context only when a real style target is selected. If style_target is none, do not invent a game style. "
@@ -601,7 +625,10 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
     fallback_postprocess = _default_postprocess_config(request.prompt, planned_asset_type)
     postprocess = _coerce_postprocess_config(planned_asset_type, plan.get("postprocess"), fallback_postprocess)
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
-    primary_description = str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip()
+    primary_description = _description_with_asset_constraints(
+        planned_asset_type,
+        str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip(),
+    )
 
     return {
         "description": primary_description,
