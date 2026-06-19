@@ -66,6 +66,8 @@ OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 RESAMPLING = getattr(Image, "Resampling", Image)
+PIXELLAB_MIN_IMAGE_SIZE = 32
+PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
 SUPPORTED_STYLE_TARGETS = set(STYLE_MATRIX.keys()) or {
     "core_keeper",
     "terraria",
@@ -162,6 +164,13 @@ def _error(message: str, **extra: Any) -> Dict[str, Any]:
     return payload
 
 
+def _response_text_excerpt(response: requests.Response, limit: int = 500) -> str:
+    text = response.text if response is not None else ""
+    if not text:
+        return ""
+    return text[:limit]
+
+
 def _safe_stem(text: str, fallback: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", text.strip().lower()).strip("._")
     if not cleaned:
@@ -175,6 +184,30 @@ def _clamp_size(value: int, default: int) -> int:
     except (TypeError, ValueError):
         parsed = default
     return max(16, min(400, parsed))
+
+
+def _provider_safe_dimensions(provider: str, width: int, height: int) -> Dict[str, int]:
+    safe_width = _clamp_size(width, 32)
+    safe_height = _clamp_size(height, 32)
+    if _normalize_generation_provider(provider) == "pixellab":
+        safe_width = max(PIXELLAB_MIN_IMAGE_SIZE, safe_width)
+        safe_height = max(PIXELLAB_MIN_IMAGE_SIZE, safe_height)
+    return {"width": safe_width, "height": safe_height}
+
+
+def _block_face_source_dimensions(provider: str, final_width: int, face_height: int) -> Dict[str, int]:
+    target_width = _clamp_size(final_width, 32)
+    target_height = _clamp_size(face_height, 32)
+    if _normalize_generation_provider(provider) != "pixellab":
+        return {"width": target_width, "height": target_height}
+
+    source_width = min(400, max(PIXELLAB_BLOCK_SOURCE_MIN_WIDTH, target_width))
+    source_height = int(round(float(source_width) * float(target_height) / float(max(1, target_width))))
+    return _provider_safe_dimensions(
+        provider,
+        source_width,
+        source_height,
+    )
 
 
 def _normalize_style_target(style_target: str) -> str:
@@ -679,7 +712,14 @@ def _generate_with_pixellab(description: str, width: int, height: int, no_backgr
         },
         timeout=(10, 180),
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        body = _response_text_excerpt(response)
+        detail = "PixelLab API rejected image generation (%s) for %sx%s" % (response.status_code, width, height)
+        if body:
+            detail = "%s: %s" % (detail, body)
+        raise requests.HTTPError(detail, response=response, request=response.request) from exc
 
     payload = response.json()
     if not isinstance(payload, dict):
@@ -766,12 +806,16 @@ def _generate_with_openai_image(description: str, width: int, height: int, no_ba
 def _generate_with_provider(provider: str, description: str, width: int, height: int, no_background: bool) -> bytes:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
-        return _generate_with_pixellab(
+        safe_dimensions = _provider_safe_dimensions(normalized_provider, width, height)
+        image_bytes = _generate_with_pixellab(
             description=description,
-            width=width,
-            height=height,
+            width=safe_dimensions["width"],
+            height=safe_dimensions["height"],
             no_background=no_background,
         )
+        if (safe_dimensions["width"], safe_dimensions["height"]) != (width, height):
+            return _resize_png_bytes(image_bytes, width, height)
+        return image_bytes
     if normalized_provider == "openai_image":
         return _generate_with_openai_image(
             description=description,
@@ -861,19 +905,21 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         top_height = _clamp_size(postprocess.get("top_height"), 16)
         front_height = _clamp_size(postprocess.get("front_height"), 32)
         face_config = {"final_width": final_width, "top_height": top_height, "front_height": front_height}
+        top_source_dimensions = _block_face_source_dimensions(provider, final_width, top_height)
+        front_source_dimensions = _block_face_source_dimensions(provider, final_width, front_height)
         descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
         top_bytes = _generate_with_provider(
             provider=provider,
             description=str(descriptions.get("top") or plan["description"]),
-            width=final_width,
-            height=top_height,
+            width=top_source_dimensions["width"],
+            height=top_source_dimensions["height"],
             no_background=False,
         )
         front_bytes = _generate_with_provider(
             provider=provider,
             description=str(descriptions.get("front") or plan["description"]),
-            width=final_width,
-            height=front_height,
+            width=front_source_dimensions["width"],
+            height=front_source_dimensions["height"],
             no_background=False,
         )
 
@@ -1221,7 +1267,7 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
         except requests.HTTPError as exc:
             response = exc.response
             if response is not None and response.status_code == 422:
-                print("PixelLab rejected planned payload:", response.text)
+                print("PixelLab rejected planned payload:", _response_text_excerpt(response))
                 fallback_plan = _provider_rejection_fallback_plan(request, plan.get("asset_type", requested_asset_type), provider)
                 outputs = _execute_generation_workflow(fallback_plan, target_folder)
                 plan = fallback_plan
@@ -1248,7 +1294,7 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
     except Exception as exc:
         print("Asset generation failed:", exc)
         if isinstance(exc, requests.HTTPError) and exc.response is not None:
-            print("PixelLab error body:", exc.response.text)
+            print("PixelLab error body:", _response_text_excerpt(exc.response))
         return _error(str(exc))
 
 
