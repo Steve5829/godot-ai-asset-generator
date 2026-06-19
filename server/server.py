@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 from pydantic import BaseModel, Field
 
 try:
@@ -128,6 +128,40 @@ ASSET_TYPE_SPECS = {
 }
 SUPPORTED_ASSET_TYPES = set(ASSET_TYPE_SPECS.keys())
 SUPPORTED_GENERATION_PROVIDERS = {"pixellab", "openai_image"}
+BLOCK_MATERIAL_PROFILES = {
+    "forest": {
+        "title": "Forest Grass Dirt Block",
+        "keywords": ("forest", "grass", "leaf", "leaves", "moss", "root", "roots", "tree", "wood"),
+        "top": (
+            "dense Core Keeper forest ground canopy made of many rounded green leaf clusters, "
+            "clover-like leaf shapes, moss patches, tiny yellow flower dots, dark teal shadow gaps, "
+            "organic leafy noise; mostly green, not plain flat grass"
+        ),
+        "front": (
+            "vertical wall of tangled exposed tree roots and twisting brown branches, "
+            "rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe "
+            "along the upper seam; root lattice texture, not plain dirt"
+        ),
+    },
+    "desert": {
+        "title": "Desert Sandstone Block",
+        "keywords": ("desert", "sand", "sandstone", "dry", "dune"),
+        "top": "warm sandy top surface with small wind-shaped grains, pale gold and tan color variation, sparse cracked patterns",
+        "front": "layered sandstone vertical wall with horizontal strata, small chips, warm orange shadows, dry eroded texture",
+    },
+    "ocean": {
+        "title": "Ocean Coral Rock Block",
+        "keywords": ("ocean", "coral", "sea", "algae", "water", "underwater"),
+        "top": "wet blue-green coral rock top with tiny coral specks, seaweed flecks, cool turquoise highlights, damp uneven surface",
+        "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture",
+    },
+    "barren": {
+        "title": "Barren Cracked Stone Block",
+        "keywords": ("barren", "stone", "rock", "cracked", "dusty"),
+        "top": "dry gray-brown cracked stone top surface, dusty rubble, sparse dark fractures, desaturated rocky pixel texture",
+        "front": "vertical cracked stone wall with jagged fissures, dusty sediment, muted gray and brown palette, rough barren texture",
+    },
+}
 
 
 class GenerateAssetRequest(BaseModel):
@@ -292,15 +326,40 @@ def _description_with_asset_constraints(asset_type: str, description: str) -> st
     return "%s. %s" % (cleaned_description.rstrip("."), ground_constraints)
 
 
+def _block_material_profile(plan: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+    search_text = " ".join(
+        str(part or "")
+        for part in (
+            plan.get("description"),
+            descriptions.get("primary"),
+            descriptions.get("top"),
+            descriptions.get("front"),
+            plan.get("filename_stub"),
+        )
+    ).lower()
+    for profile in BLOCK_MATERIAL_PROFILES.values():
+        if any(keyword in search_text for keyword in profile["keywords"]):
+            return profile
+    return None
+
+
 def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width: int, source_height: int) -> str:
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
     primary_description = str(plan.get("description") or descriptions.get("primary") or "").strip()
     planned_face_description = str(descriptions.get(face) or "").strip()
+    profile = _block_material_profile(plan)
+    profile_face_description = str(profile.get(face, "")).strip() if profile else ""
+    profile_title = str(profile.get("title", "")).strip() if profile else ""
     material_parts: List[str] = []
-    if primary_description:
-        material_parts.append("Material idea: %s" % primary_description.rstrip("."))
-    if planned_face_description and planned_face_description.lower() != primary_description.lower():
+    if profile_face_description:
+        material_parts.append("Material details: %s" % profile_face_description.rstrip("."))
+        if profile_title:
+            material_parts.append("Block profile: %s" % profile_title)
+    elif planned_face_description:
         material_parts.append("Face material details: %s" % planned_face_description.rstrip("."))
+    if primary_description:
+        material_parts.append("Original user material request: %s" % primary_description.rstrip("."))
     if not material_parts:
         material_parts.append("Material idea: game block material texture")
 
@@ -309,12 +368,22 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     has_style_target = bool(style_context.get("target_style_selected", style_title and style_title.lower() not in {"none", "no style target"}))
     style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
 
-    face_label = "top horizontal face" if face == "top" else "front vertical face"
-    face_rules = (
-        "Read as horizontal/top material only: top-down surface texture, no vertical wall, no cube sides, no scene. "
-        if face == "top"
-        else "Read as vertical/front material only: side wall material, no grassy field top and no cube outline. "
-    )
+    if face == "top":
+        face_label = "top horizontal face"
+        face_rules = (
+            "Read as horizontal/top surface material only. For forest blocks this must be mostly green grass, moss, "
+            "rounded leaves, leafy clusters, tiny flowers, and dark gaps between foliage. "
+            "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
+            "Only include dirt as tiny surface specks if explicitly requested as a bare dirt top. "
+        )
+    else:
+        face_label = "front vertical face"
+        face_rules = (
+            "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
+            "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
+            "No grassy top surface, no top-down field, no horizontal ground tile, no cube outline. "
+            "A very thin grass or moss lip is allowed only along the upper edge. "
+        )
     return (
         "Create a %sx%s seamless pixel art material texture tile. "
         "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
@@ -930,7 +999,20 @@ def _compose_two_face_block(top_bytes: bytes, front_bytes: bytes, config: Dict[s
     top_face = _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST)
     front_face = _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST)
     composed = Image.new("RGBA", (final_width, top_height + front_height), (0, 0, 0, 0))
-    composed.paste(top_face, (0, 0), top_face)
+    cap_mask = Image.new("L", (final_width, top_height), 0)
+    top_inset = max(2, final_width // 8)
+    ImageDraw.Draw(cap_mask).polygon(
+        [
+            (top_inset, 0),
+            (final_width - top_inset - 1, 0),
+            (final_width - 1, top_height - 1),
+            (0, top_height - 1),
+        ],
+        fill=255,
+    )
+    top_cap = Image.new("RGBA", (final_width, top_height), (0, 0, 0, 0))
+    top_cap.paste(top_face, (0, 0), cap_mask)
+    composed.paste(top_cap, (0, 0), top_cap)
     composed.paste(front_face, (0, top_height), front_face)
     return composed
 
