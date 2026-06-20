@@ -90,13 +90,15 @@ ASSET_TYPE_SPECS = {
     },
     "ground_atlas": {
         "label": "Ground Atlas",
-        "default_width": 256,
-        "default_height": 256,
+        "default_width": 128,
+        "default_height": 128,
         "no_background": False,
         "prompt_guidance": (
             "Create a top-down orthographic terrain/material atlas or reusable tileable ground swatch. "
             "Fill the frame with repeatable material variation; no horizon, no scene composition, no paths or roads "
-            "unless explicitly requested, no large trees, trunks, characters, or buildings, and no single focal object."
+            "unless explicitly requested, no large trees, trunks, characters, or buildings, and no single focal object. "
+            "Do not draw grid lines, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; "
+            "tile boundaries should be implied only by natural material variation."
         ),
     },
     "block_texture": {
@@ -476,13 +478,15 @@ def _description_with_asset_constraints(asset_type: str, description: str) -> st
         return cleaned_description
 
     lowered_description = cleaned_description.lower()
-    if "top-down orthographic terrain/material atlas" in lowered_description and "do not create a composed forest scene" in lowered_description:
+    if "top-down orthographic terrain/material atlas" in lowered_description and "do not draw grid lines" in lowered_description:
         return cleaned_description
 
     ground_constraints = (
         "Generate as a top-down orthographic terrain/material atlas for reusable game ground tiles. "
         "Fill the entire image with tileable material variation. Do not create a composed forest scene, "
-        "camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object."
+        "camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. "
+        "Do not draw grid lines, crosses, 2x2 cross layouts, tile borders, seams, cell divisions, cell outlines, "
+        "or visible tile separators; tile boundaries should be implied only by natural material variation."
     )
     if not cleaned_description:
         return ground_constraints
@@ -904,6 +908,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "Supported workflows are single_image, ground_atlas, spritesheet, block_texture_two_face, and reference_scene. "
                 "For block_texture, prefer block_texture_two_face and provide separate top and front descriptions for two API calls. "
                 "For ground_atlas, create a top-down orthographic terrain/material atlas or reusable tileable ground swatch, not a composed scene. "
+                "For ground_atlas, do not draw grid lines, crosses, 2x2 cross layouts, tile borders, seams, cell divisions, cell outlines, or visible tile separators. "
                 "If the user asks for a forest ground atlas, produce forest floor material texture variation, not trees, paths, or a forest scene. "
                 "Only reference_scene may include composed scenes, backgrounds, camera views, horizons, or environment concept art. "
                 "For ground_atlas, save the full atlas by default; set postprocess.slice true only when the user asks for sliced tiles. "

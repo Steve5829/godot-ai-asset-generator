@@ -301,7 +301,7 @@ func _on_generate_context(selection):
 	_open_prompt_dialog(
 		"generate",
 		"Generate a new asset in %s" % folder_path,
-		"Example: Make a top-down reusable forest ground material atlas, no trees or path, or a Core Keeper-style stone block with top and front faces",
+		"Example: Make a 128x128 top-down reusable forest ground material atlas, no trees, path, or grid lines, or a Core Keeper-style stone block with top and front faces",
 		"Generate",
 		{"folder_path": folder_path},
 	)
