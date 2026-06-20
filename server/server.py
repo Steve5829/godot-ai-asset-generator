@@ -89,16 +89,16 @@ ASSET_TYPE_SPECS = {
         ),
     },
     "ground_atlas": {
-        "label": "Ground Atlas",
+        "label": "Ground Texture Swatch",
         "default_width": 128,
         "default_height": 128,
         "no_background": False,
         "prompt_guidance": (
-            "Create a top-down orthographic terrain/material atlas or reusable tileable ground swatch. "
-            "Fill the frame with repeatable material variation; no horizon, no scene composition, no paths or roads "
+            "Create one single continuous top-down terrain material texture swatch. "
+            "Fill the frame with repeatable material variation as one unbroken image; no horizon, no scene composition, no paths or roads "
             "unless explicitly requested, no large trees, trunks, characters, or buildings, and no single focal object. "
-            "Do not draw grid lines, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; "
-            "tile boundaries should be implied only by natural material variation."
+            "Do not draw grid lines, individual tile panels, collage layouts, 2x2/3x3 layouts, crosses, tile borders, "
+            "seams, cell divisions, cell outlines, or visible tile separators. Any slicing or cropping happens after generation."
         ),
     },
     "block_texture": {
@@ -471,22 +471,41 @@ def _description_with_reference_context(description: str, reference_context: Opt
     return "%s. %s" % (cleaned_description.rstrip("."), suffix)
 
 
+def _ground_provider_description(description: str) -> str:
+    cleaned = str(description or "").strip()
+    replacements = (
+        (r"\bground[\s_-]+atlas\b", "ground texture swatch"),
+        (r"\bterrain[\s_-]+atlas\b", "terrain texture swatch"),
+        (r"\btile[\s_-]+atlas\b", "ground texture swatch"),
+        (r"\btexture[\s_-]+atlas\b", "texture swatch"),
+        (r"\btileset\b", "continuous texture swatch"),
+        (r"\btile[\s_-]+set\b", "continuous texture swatch"),
+        (r"\btilemap\b", "continuous ground texture"),
+        (r"\batlas\b", "texture swatch"),
+    )
+    for pattern, replacement in replacements:
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
 def _description_with_asset_constraints(asset_type: str, description: str) -> str:
     normalized_asset_type = _normalize_asset_type(asset_type)
     cleaned_description = str(description or "").strip()
     if normalized_asset_type != "ground_atlas":
         return cleaned_description
 
+    cleaned_description = _ground_provider_description(cleaned_description)
     lowered_description = cleaned_description.lower()
-    if "top-down orthographic terrain/material atlas" in lowered_description and "do not draw grid lines" in lowered_description:
+    if "single continuous top-down terrain material texture swatch" in lowered_description and "do not pre-divide" in lowered_description:
         return cleaned_description
 
     ground_constraints = (
-        "Generate as a top-down orthographic terrain/material atlas for reusable game ground tiles. "
-        "Fill the entire image with tileable material variation. Do not create a composed forest scene, "
+        "Generate as a single continuous top-down terrain material texture swatch. "
+        "Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. "
+        "Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, "
         "camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. "
-        "Do not draw grid lines, crosses, 2x2 cross layouts, tile borders, seams, cell divisions, cell outlines, "
-        "or visible tile separators; tile boundaries should be implied only by natural material variation."
+        "Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, "
+        "cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model."
     )
     if not cleaned_description:
         return ground_constraints
@@ -576,7 +595,7 @@ def _provider_constraints(provider: str) -> str:
         return "PixelLab provider. Prefer native-looking pixel art, crisp silhouettes, and no blurry edges."
     if normalized_provider == "openai_image":
         return (
-            "GPT Image provider. It can handle richer reference scenes, larger compositions, and atlas-like outputs "
+            "GPT Image provider. It can handle richer reference scenes, larger compositions, and structured asset outputs "
             "better than PixelLab, but the final saved asset will still be clamped to 400px per side. Preserve crisp "
             "game-art readability, avoid photorealism unless requested, and make repeatable materials less object-centric."
         )
@@ -907,11 +926,12 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "Supported asset types are icon, ground_atlas, spritesheet, block_texture, and reference_scene. "
                 "Supported workflows are single_image, ground_atlas, spritesheet, block_texture_two_face, and reference_scene. "
                 "For block_texture, prefer block_texture_two_face and provide separate top and front descriptions for two API calls. "
-                "For ground_atlas, create a top-down orthographic terrain/material atlas or reusable tileable ground swatch, not a composed scene. "
-                "For ground_atlas, do not draw grid lines, crosses, 2x2 cross layouts, tile borders, seams, cell divisions, cell outlines, or visible tile separators. "
-                "If the user asks for a forest ground atlas, produce forest floor material texture variation, not trees, paths, or a forest scene. "
+                "For ground_atlas, create one single continuous full-image top-down terrain material texture swatch, not a composed scene. "
+                "For ground_atlas, the image model must render one unbroken image first; slicing/cropping is postprocess only when requested, never drawn by the model. "
+                "For ground_atlas, do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators. "
+                "If the user requests forest ground output with this asset type, produce a single continuous forest floor material texture swatch, not trees, paths, a tileset board, or a forest scene. "
                 "Only reference_scene may include composed scenes, backgrounds, camera views, horizons, or environment concept art. "
-                "For ground_atlas, save the full atlas by default; set postprocess.slice true only when the user asks for sliced tiles. "
+                "For ground_atlas, save the full 128x128 image by default; set postprocess.slice true only when the user asks for sliced or cropped tiles. "
                 "For spritesheet, save the full sheet by default; set postprocess.crop_cells true only when the user asks for cropped cells. "
                 "Use the style_context only when a real style target is selected. If style_target is none, do not invent a game style. "
                 "When reference_context is present, use it as visual evidence for transferable style traits. Do not copy, trace, "
