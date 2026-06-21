@@ -4,6 +4,9 @@ import io
 import json
 import os
 import re
+import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -67,6 +70,7 @@ OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 REFERENCE_IMAGE_ROOT = BASE_DIR / "reference_images"
+GENERATION_LOG_PATH = BASE_DIR / "logs" / "generation_events.jsonl"
 MAX_REFERENCE_IMAGES = 3
 REFERENCE_IMAGE_MAX_EDGE = 512
 RESAMPLING = getattr(Image, "Resampling", Image)
@@ -209,6 +213,148 @@ def _response_text_excerpt(response: requests.Response, limit: int = 500) -> str
     if not text:
         return ""
     return text[:limit]
+
+
+def _json_default(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Path):
+        return value.as_posix()
+    return str(value)
+
+
+def _bounded_error(message: Any, limit: int = 1000) -> str:
+    text = str(message or "")
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
+
+
+def _generation_log_response_path() -> str:
+    try:
+        return GENERATION_LOG_PATH.resolve().relative_to(BASE_DIR.parent.resolve()).as_posix()
+    except ValueError:
+        return GENERATION_LOG_PATH.resolve().as_posix()
+
+
+def _outputs_for_log(outputs: Optional[List[Dict[str, Any]]]) -> List[Dict[str, str]]:
+    logged_outputs: List[Dict[str, str]] = []
+    for output in outputs or []:
+        if not isinstance(output, dict):
+            continue
+        logged_outputs.append(
+            {
+                "role": str(output.get("role") or ""),
+                "file_path": str(output.get("file_path") or ""),
+            }
+        )
+    return logged_outputs
+
+
+def _reference_log_details(plan: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    if not isinstance(plan, dict):
+        return {
+            "reference_images_found": 0,
+            "reference_image_paths": [],
+            "reference_analysis_status": "none",
+        }
+
+    reference_context = plan.get("reference_context") if isinstance(plan.get("reference_context"), dict) else {}
+    reference_images = reference_context.get("reference_images") or plan.get("reference_images") or []
+    reference_paths: List[str] = []
+    if isinstance(reference_images, list):
+        for reference_image in reference_images:
+            if isinstance(reference_image, dict):
+                path = reference_image.get("path")
+            else:
+                path = reference_image
+            if path:
+                reference_paths.append(str(path))
+
+    status = str(reference_context.get("status") or "").strip()
+    if not reference_paths:
+        status = "none"
+    elif status not in {"selected", "analyzed", "analysis_failed"}:
+        status = "selected"
+
+    return {
+        "reference_images_found": len(reference_paths),
+        "reference_image_paths": reference_paths,
+        "reference_analysis_status": status,
+    }
+
+
+def _generation_log_event(
+    event_id: str,
+    request: GenerateAssetRequest,
+    plan: Optional[Dict[str, Any]],
+    status: str,
+    elapsed_seconds: float,
+    outputs: Optional[List[Dict[str, Any]]] = None,
+    error: Optional[Any] = None,
+) -> Dict[str, Any]:
+    requested_asset_type = _normalize_asset_type(request.asset_type, allow_auto=True)
+    normalized_style = _normalize_style_target(request.style_target)
+    normalized_provider = _normalize_generation_provider(request.provider)
+    plan_payload = plan if isinstance(plan, dict) else {}
+    planning_source = str(plan_payload.get("planning_source") or "unknown")
+    reference_details = _reference_log_details(plan_payload)
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "log_event_id": event_id,
+        "prompt": request.prompt,
+        "folder_path": request.folder_path,
+        "requested_asset_type": requested_asset_type,
+        "asset_type": plan_payload.get("asset_type", requested_asset_type),
+        "workflow": plan_payload.get("workflow", "unknown"),
+        "provider": plan_payload.get("provider", normalized_provider),
+        "style_target": plan_payload.get("style_target", normalized_style),
+        "planning_source": planning_source,
+        "fallback_used": planning_source == "fallback",
+        "reference_images_found": reference_details["reference_images_found"],
+        "reference_image_paths": reference_details["reference_image_paths"],
+        "reference_analysis_status": reference_details["reference_analysis_status"],
+        "connection_status": status,
+        "generation_status": status,
+        "error": _bounded_error(error) if error else "",
+        "outputs": _outputs_for_log(outputs),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+    }
+
+
+def _append_generation_log_event(event: Dict[str, Any]) -> None:
+    try:
+        GENERATION_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with GENERATION_LOG_PATH.open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(event, ensure_ascii=True, default=_json_default, sort_keys=True) + "\n")
+    except Exception as exc:
+        print("Generation log write failed:", exc)
+
+
+def _record_generation_log_event(
+    event_id: str,
+    request: GenerateAssetRequest,
+    plan: Optional[Dict[str, Any]],
+    status: str,
+    elapsed_seconds: float,
+    outputs: Optional[List[Dict[str, Any]]] = None,
+    error: Optional[Any] = None,
+) -> None:
+    try:
+        _append_generation_log_event(
+            _generation_log_event(
+                event_id,
+                request,
+                plan,
+                status,
+                elapsed_seconds,
+                outputs=outputs,
+                error=error,
+            )
+        )
+    except Exception as exc:
+        print("Generation log event failed:", exc)
 
 
 def _safe_stem(text: str, fallback: str) -> str:
@@ -1628,9 +1774,24 @@ def _plan_automation(prompt: str, selected_nodes: List[SelectedNode]) -> List[Di
 @app.post("/vibe/generate")
 async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
     print("Generating asset for prompt:", request.prompt)
+    log_event_id = uuid.uuid4().hex
+    log_path = _generation_log_response_path()
+    started_at = time.monotonic()
+    plan: Optional[Dict[str, Any]] = None
+    outputs: List[Dict[str, Any]] = []
 
     if not GODOT_PROJECT_DIR.exists():
-        return _error("Godot project dir not found: %s" % GODOT_PROJECT_DIR)
+        message = "Godot project dir not found: %s" % GODOT_PROJECT_DIR
+        _record_generation_log_event(
+            log_event_id,
+            request,
+            plan,
+            "error",
+            time.monotonic() - started_at,
+            outputs=outputs,
+            error=message,
+        )
+        return _error(message, log_event_id=log_event_id, log_path=log_path)
 
     try:
         target_folder = _resolve_res_path(request.folder_path, expect_directory=True)
@@ -1670,6 +1831,14 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
         if not outputs:
             raise ValueError("Generation workflow produced no output files")
         primary_output = outputs[0]
+        _record_generation_log_event(
+            log_event_id,
+            request,
+            plan,
+            "success",
+            time.monotonic() - started_at,
+            outputs=outputs,
+        )
 
         return {
             "status": "success",
@@ -1683,12 +1852,23 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             "metadata": metadata,
             "plan": plan,
             "outputs": outputs,
+            "log_event_id": log_event_id,
+            "log_path": log_path,
         }
     except Exception as exc:
         print("Asset generation failed:", exc)
         if isinstance(exc, requests.HTTPError) and exc.response is not None:
             print("PixelLab error body:", _response_text_excerpt(exc.response))
-        return _error(str(exc))
+        _record_generation_log_event(
+            log_event_id,
+            request,
+            plan,
+            "error",
+            time.monotonic() - started_at,
+            outputs=outputs,
+            error=exc,
+        )
+        return _error(str(exc), log_event_id=log_event_id, log_path=log_path)
 
 
 @app.post("/vibe/modify")

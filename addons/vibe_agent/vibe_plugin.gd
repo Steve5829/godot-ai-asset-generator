@@ -431,6 +431,43 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 func _handle_asset_response(payload: Dictionary):
 	var file_path = String(payload.get("file_path", ""))
 	print("Asset ready: ", file_path)
+	var workflow = String(payload.get("workflow", "unknown"))
+	var provider = String(payload.get("provider", "unknown"))
+	var plan = payload.get("plan", {})
+	var planning_source = "unknown"
+	var fallback_used = false
+	var reference_status = "none"
+	var reference_count = 0
+	if typeof(plan) == TYPE_DICTIONARY:
+		planning_source = String(plan.get("planning_source", "unknown"))
+		fallback_used = planning_source == "fallback"
+		var reference_images = plan.get("reference_images", [])
+		if typeof(reference_images) == TYPE_ARRAY:
+			reference_count = reference_images.size()
+		var reference_context = plan.get("reference_context", {})
+		if typeof(reference_context) == TYPE_DICTIONARY:
+			reference_status = String(reference_context.get("status", "none"))
+		elif reference_count > 0:
+			reference_status = "selected"
+	print(
+		"Generation workflow: ",
+		workflow,
+		" provider: ",
+		provider,
+		" planning: ",
+		planning_source,
+		" fallback: ",
+		fallback_used,
+		" references: ",
+		reference_status,
+		" (",
+		reference_count,
+		")"
+	)
+	var log_path = String(payload.get("log_path", ""))
+	var log_event_id = String(payload.get("log_event_id", ""))
+	if not log_path.is_empty():
+		print("Generation log: ", log_path, " event: ", log_event_id)
 	get_editor_interface().get_resource_filesystem().scan()
 	if not file_path.is_empty():
 		get_editor_interface().select_file(file_path)

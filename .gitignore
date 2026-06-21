@@ -212,6 +212,7 @@ generate_*.png
 node_3d.tscn
 
 # Generated image outputs and local visual experiments
+server/logs/
 *.png
 *.jpg
 *.jpeg
