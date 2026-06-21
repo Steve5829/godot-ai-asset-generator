@@ -203,28 +203,55 @@ class ReferenceImageTests(unittest.TestCase):
         self.assertIn("provider-side generation failure", message)
         self.assertIn("GPT Image / openai_image provider", message)
 
-    def test_block_face_prompts_exclude_reference_checkerboard_traits(self) -> None:
+    def test_block_texture_reference_ranking_prioritizes_material_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            reference_path = root / "core_keeper" / "block_texture" / "grass_block.png"
+            reference_dir = root / "core_keeper" / "block_texture"
+            for name in ("dirt.png", "root grass.png", "sand front.png", "sand top.png"):
+                _write_reference_image(reference_dir / name)
+
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root):
+                selected = server._select_reference_images("core_keeper", "block_texture", "sand block")
+
+            self.assertEqual(selected[0].name, "sand front.png")
+            self.assertEqual(selected[1].name, "sand top.png")
+            self.assertNotIn("dirt.png", [path.name for path in selected[:2]])
+
+    def test_block_texture_skips_reference_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            reference_path = root / "core_keeper" / "block_texture" / "sand front.png"
             _write_reference_image(reference_path)
 
-            with patch.object(server, "REFERENCE_IMAGE_ROOT", root), patch.object(
-                server,
-                "_analyze_reference_images",
-                return_value="gray checkerboard cutout background with green grass top and brown root front",
-            ):
-                plan = server._fallback_generation_plan(
-                    "grass block with leafy top and root front face",
-                    "block_texture",
-                    "auto",
-                    "core_keeper",
-                    "pixellab",
-                    "test",
-                )
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root):
+                context = server._build_reference_context("sand block", "core_keeper", "block_texture")
 
-            top_prompt = server._strict_block_face_description(plan, "top", 64, 32)
-            front_prompt = server._strict_block_face_description(plan, "front", 64, 64)
+            self.assertIsNone(context)
+
+    def test_desert_block_front_prompt_forbids_brick(self) -> None:
+        plan = server._fallback_generation_plan(
+            "sand block",
+            "block_texture",
+            "auto",
+            "core_keeper",
+            "pixellab",
+            "test",
+        )
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertIn("not brick masonry", front_prompt)
+        self.assertIn("cross-face consistency", front_prompt)
+
+    def test_block_face_prompts_exclude_reference_checkerboard_traits(self) -> None:
+        plan = server._fallback_generation_plan(
+            "grass block with leafy top and root front face",
+            "block_texture",
+            "auto",
+            "core_keeper",
+            "pixellab",
+            "test",
+        )
+        top_prompt = server._strict_block_face_description(plan, "top", 64, 32)
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64)
 
         self.assertNotIn("Reference image style traits", top_prompt)
         self.assertNotIn("Reference image style traits", front_prompt)

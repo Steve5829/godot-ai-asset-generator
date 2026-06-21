@@ -80,8 +80,15 @@ REFERENCE_IMAGE_SYNONYM_GROUPS = (
     {"potion", "healing", "bottle", "vial", "flask", "elixir"},
     {"sword", "blade", "weapon"},
     {"ore", "crystal", "mineral"},
-    {"block", "wall", "ground", "stone", "dirt", "grass", "root", "leaf", "forest"},
 )
+BLOCK_TEXTURE_REFERENCE_SYNONYM_GROUPS = (
+    {"sand", "dune", "desert", "sandstone", "dry"},
+    {"grass", "leaf", "leaves", "moss", "forest", "root", "roots", "dirt", "wood", "tree"},
+    {"rock", "stone", "cracked", "barren", "dusty"},
+    {"coral", "ocean", "sea", "algae", "water", "underwater"},
+    {"brick", "wall"},
+)
+BLOCK_TEXTURE_GENERIC_TOKENS = {"block", "texture", "face", "top", "front", "side"}
 SUPPORTED_STYLE_TARGETS = set(STYLE_MATRIX.keys()) or {
     "core_keeper",
     "terraria",
@@ -163,7 +170,11 @@ BLOCK_MATERIAL_PROFILES = {
         "title": "Desert Sandstone Block",
         "keywords": ("desert", "sand", "sandstone", "dry", "dune"),
         "top": "warm sandy top surface with small wind-shaped grains, pale gold and tan color variation, sparse cracked patterns",
-        "front": "layered sandstone vertical wall with horizontal strata, small chips, warm orange shadows, dry eroded texture",
+        "front": (
+            "compact sand and sandstone vertical wall with soft horizontal strata, grainy sand pockets, "
+            "warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, "
+            "not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks"
+        ),
     },
     "ocean": {
         "title": "Ocean Coral Rock Block",
@@ -493,32 +504,51 @@ def _reference_tokens(value: str) -> Set[str]:
     return tokens
 
 
-def _expand_reference_tokens(tokens: Set[str]) -> Set[str]:
+def _expand_reference_tokens(tokens: Set[str], asset_type: str = "") -> Set[str]:
     expanded = set(tokens)
-    for synonym_group in REFERENCE_IMAGE_SYNONYM_GROUPS:
+    synonym_groups = REFERENCE_IMAGE_SYNONYM_GROUPS
+    if _normalize_asset_type(asset_type) == "block_texture":
+        synonym_groups = synonym_groups + BLOCK_TEXTURE_REFERENCE_SYNONYM_GROUPS
+    for synonym_group in synonym_groups:
         if expanded.intersection(synonym_group):
             expanded.update(synonym_group)
     return expanded
 
 
-def _reference_prompt_score(prompt_tokens: Set[str], expanded_prompt_tokens: Set[str], path: Path) -> int:
+def _reference_prompt_score(
+    prompt_tokens: Set[str],
+    expanded_prompt_tokens: Set[str],
+    path: Path,
+    asset_type: str = "",
+) -> int:
     filename_tokens = _reference_tokens(path.stem)
     if not filename_tokens:
         return 0
 
-    exact_overlap = prompt_tokens.intersection(filename_tokens)
-    synonym_overlap = expanded_prompt_tokens.intersection(_expand_reference_tokens(filename_tokens))
-    return (len(exact_overlap) * 2) + len(synonym_overlap)
+    material_prompt_tokens = {
+        token for token in prompt_tokens if token not in BLOCK_TEXTURE_GENERIC_TOKENS
+    }
+    exact_overlap = material_prompt_tokens.intersection(filename_tokens)
+    synonym_overlap = expanded_prompt_tokens.intersection(_expand_reference_tokens(filename_tokens, asset_type))
+    score = (len(exact_overlap) * 4) + (len(synonym_overlap) * 2)
+    if _normalize_asset_type(asset_type) == "block_texture":
+        if material_prompt_tokens.intersection(filename_tokens):
+            score += 6
+        if "top" in filename_tokens and "top" in prompt_tokens:
+            score += 2
+        if "front" in filename_tokens and "front" in prompt_tokens:
+            score += 2
+    return score
 
 
-def _rank_reference_images(candidates: List[Path], prompt: str) -> List[Path]:
+def _rank_reference_images(candidates: List[Path], prompt: str, asset_type: str = "") -> List[Path]:
     prompt_tokens = _reference_tokens(prompt)
     if not prompt_tokens:
         return candidates
 
-    expanded_prompt_tokens = _expand_reference_tokens(prompt_tokens)
+    expanded_prompt_tokens = _expand_reference_tokens(prompt_tokens, asset_type)
     scored = [
-        (_reference_prompt_score(prompt_tokens, expanded_prompt_tokens, path), path)
+        (_reference_prompt_score(prompt_tokens, expanded_prompt_tokens, path, asset_type), path)
         for path in candidates
     ]
     matches = sorted(
@@ -537,11 +567,11 @@ def _select_reference_images(style_target: str, asset_type: str, prompt: str = "
     normalized_asset_type = _normalize_asset_type(asset_type)
     style_root = REFERENCE_IMAGE_ROOT / normalized_style
     candidates = _list_reference_images(style_root / normalized_asset_type)
-    if not candidates:
+    if not candidates and normalized_asset_type != "block_texture":
         candidates = _list_reference_images(style_root)
     if not candidates and normalized_asset_type == "icon":
         candidates = _list_reference_images(style_root / "icon")
-    return _rank_reference_images(candidates, prompt)[:MAX_REFERENCE_IMAGES]
+    return _rank_reference_images(candidates, prompt, normalized_asset_type)[:MAX_REFERENCE_IMAGES]
 
 
 def _is_neutral_gray_pixel(red: int, green: int, blue: int, alpha: int, min_value: int = 170) -> bool:
@@ -647,6 +677,10 @@ def _analyze_reference_images(reference_paths: List[Path], prompt: str, style_ta
 
 
 def _build_reference_context(prompt: str, style_target: str, asset_type: str) -> Optional[Dict[str, Any]]:
+    normalized_asset_type = _normalize_asset_type(asset_type)
+    if normalized_asset_type == "block_texture":
+        return None
+
     reference_paths = _select_reference_images(style_target, asset_type, prompt)
     if not reference_paths:
         return None
@@ -766,17 +800,121 @@ def _block_face_user_prompt(plan: Dict[str, Any]) -> str:
 
 
 def _block_face_match_clause(profile_key: str, face: str) -> str:
-    if profile_key != "forest":
-        return ""
+    if profile_key == "forest":
+        if face == "top":
+            return (
+                "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, "
+                "moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the "
+                "matching front face of this block. "
+            )
+        return (
+            "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same "
+            "green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
+        )
+    if profile_key == "desert":
+        if face == "top":
+            return (
+                "Cross-face consistency: this sand top must use the same warm tan, gold, and pale beige grain colors "
+                "as the sand/sandstone material on the matching front face of this block. "
+            )
+        return (
+            "Cross-face consistency: this front face must stay in the same sand/sandstone material family as the top "
+            "face, using matching tan and gold palette; the upper edge should read as compacted sand from the same "
+            "block, not a different material like brick or masonry. "
+        )
+    if profile_key == "ocean":
+        if face == "top":
+            return (
+                "Cross-face consistency: this wet rock/coral top must use the same blue-green mineral palette as the "
+                "matching front face of this block. "
+            )
+        return (
+            "Cross-face consistency: this front face must use the same damp blue-green rock and algae palette as the "
+            "top face of this same block. "
+        )
+    if profile_key == "barren":
+        if face == "top":
+            return (
+                "Cross-face consistency: this cracked stone top must use the same gray-brown rocky palette as the "
+                "matching front face of this block. "
+            )
+        return (
+            "Cross-face consistency: this front face must use the same dusty gray-brown cracked stone palette as the "
+            "top face of this same block. "
+        )
+    return ""
+
+
+def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
+    if profile_key == "desert":
+        if face == "top":
+            return (
+                "top horizontal face",
+                (
+                    "Read as horizontal sand surface only: wind-shaped grains, pale gold and tan clusters, tiny pebble "
+                    "specks, sparse cracked dry patterns. Do not draw brick, masonry, vertical walls, side material, "
+                    "or cube sides. "
+                ),
+            )
+        return (
+            "front vertical face",
+            (
+                "Read as vertical sand/sandstone wall only: compacted sediment strata, grainy sand pockets, warm tan "
+                "and gold erosion marks. Must remain the same sand block material family as the top face. "
+                "Do not draw brick grids, red clay bricks, masonry blocks, cobblestone rectangles, grass, roots, "
+                "or a separate top surface. "
+            ),
+        )
+    if profile_key == "ocean":
+        if face == "top":
+            return (
+                "top horizontal face",
+                (
+                    "Read as wet rock/coral top surface only: tiny coral specks, seaweed flecks, turquoise highlights, "
+                    "damp uneven mineral texture. No vertical wall, no side material, no scene. "
+                ),
+            )
+        return (
+            "front vertical face",
+            (
+                "Read as wet rock vertical wall only: algae streaks, barnacle-like dots, blue-green shadows, underwater "
+                "mineral texture. No sandy beach, no grass, no separate top surface. "
+            ),
+        )
+    if profile_key == "barren":
+        if face == "top":
+            return (
+                "top horizontal face",
+                (
+                    "Read as cracked stone top surface only: dusty rubble, sparse dark fractures, desaturated rocky "
+                    "pixel texture. No vertical wall, no side material, no scene. "
+                ),
+            )
+        return (
+            "front vertical face",
+            (
+                "Read as cracked stone vertical wall only: jagged fissures, dusty sediment, muted gray and brown palette. "
+                "No grass, roots, sand, or separate top surface. "
+            ),
+        )
     if face == "top":
         return (
-            "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, "
-            "moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the "
-            "matching front face of this block. "
+            "top horizontal face",
+            (
+                "Read as horizontal/top surface material only. For forest blocks this must be mostly green grass, moss, "
+                "rounded leaves, leafy clusters, tiny flowers, and dark gaps between foliage. "
+                "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
+                "Only include dirt as tiny surface specks if explicitly requested as a bare dirt top. "
+            ),
         )
     return (
-        "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same "
-        "green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
+        "front vertical face",
+        (
+            "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
+            "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
+            "No grassy top surface, no top-down field, no horizontal ground tile, no cube outline. "
+            "A very thin grass or moss lip is allowed only along the upper edge. "
+        ),
     )
 
 
@@ -814,23 +952,8 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     has_style_target = bool(style_context.get("target_style_selected", style_title and style_title.lower() not in {"none", "no style target"}))
     style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
     match_part = _block_face_match_clause(profile_key, face)
+    face_label, face_rules = _block_face_rules(profile_key, face)
 
-    if face == "top":
-        face_label = "top horizontal face"
-        face_rules = (
-            "Read as horizontal/top surface material only. For forest blocks this must be mostly green grass, moss, "
-            "rounded leaves, leafy clusters, tiny flowers, and dark gaps between foliage. "
-            "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
-            "Only include dirt as tiny surface specks if explicitly requested as a bare dirt top. "
-        )
-    else:
-        face_label = "front vertical face"
-        face_rules = (
-            "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
-            "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
-            "No grassy top surface, no top-down field, no horizontal ground tile, no cube outline. "
-            "A very thin grass or moss lip is allowed only along the upper edge. "
-        )
     return (
         "Create a %sx%s seamless pixel art material texture tile. "
         "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
