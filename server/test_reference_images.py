@@ -203,6 +203,43 @@ class ReferenceImageTests(unittest.TestCase):
         self.assertIn("provider-side generation failure", message)
         self.assertIn("GPT Image / openai_image provider", message)
 
+    def test_block_face_prompts_exclude_reference_checkerboard_traits(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            reference_path = root / "core_keeper" / "block_texture" / "grass_block.png"
+            _write_reference_image(reference_path)
+
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root), patch.object(
+                server,
+                "_analyze_reference_images",
+                return_value="gray checkerboard cutout background with green grass top and brown root front",
+            ):
+                plan = server._fallback_generation_plan(
+                    "grass block with leafy top and root front face",
+                    "block_texture",
+                    "auto",
+                    "core_keeper",
+                    "pixellab",
+                    "test",
+                )
+
+            top_prompt = server._strict_block_face_description(plan, "top", 64, 32)
+            front_prompt = server._strict_block_face_description(plan, "front", 64, 64)
+
+        self.assertNotIn("Reference image style traits", top_prompt)
+        self.assertNotIn("Reference image style traits", front_prompt)
+        self.assertNotIn("gray checkerboard cutout background", top_prompt.lower())
+        self.assertIn("Cross-face consistency", top_prompt)
+        self.assertIn("Cross-face consistency", front_prompt)
+        self.assertIn("opaque material texture", top_prompt.lower())
+
+    def test_prepare_reference_image_for_vision_replaces_gray_matte(self) -> None:
+        image = Image.new("RGBA", (4, 4), (247, 247, 247, 255))
+        image.putpixel((1, 1), (120, 180, 90, 255))
+        prepared = server._prepare_reference_image_for_vision(image)
+        self.assertEqual(prepared.getpixel((0, 0)), (34, 36, 42, 255))
+        self.assertEqual(prepared.getpixel((1, 1)), (120, 180, 90, 255))
+
 
 if __name__ == "__main__":
     unittest.main()

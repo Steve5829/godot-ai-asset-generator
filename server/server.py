@@ -8,13 +8,13 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 try:
@@ -544,9 +544,29 @@ def _select_reference_images(style_target: str, asset_type: str, prompt: str = "
     return _rank_reference_images(candidates, prompt)[:MAX_REFERENCE_IMAGES]
 
 
+def _is_neutral_gray_pixel(red: int, green: int, blue: int, alpha: int, min_value: int = 170) -> bool:
+    if alpha < 128:
+        return True
+    return abs(red - green) <= 10 and abs(green - blue) <= 10 and red >= min_value
+
+
+def _prepare_reference_image_for_vision(image: Image.Image) -> Image.Image:
+    """Remove cutout/checkerboard matte backgrounds before vision analysis."""
+    converted = image.convert("RGBA")
+    pixels = converted.load()
+    width, height = converted.size
+    matte_rgb = (34, 36, 42)
+    for y in range(height):
+        for x in range(width):
+            red, green, blue, alpha = pixels[x, y]
+            if _is_neutral_gray_pixel(red, green, blue, alpha):
+                pixels[x, y] = matte_rgb + (255,)
+    return converted
+
+
 def _image_data_url(path: Path) -> str:
     with Image.open(path) as image:
-        converted = image.convert("RGBA")
+        converted = _prepare_reference_image_for_vision(image)
         if max(converted.size) > REFERENCE_IMAGE_MAX_EDGE:
             converted.thumbnail((REFERENCE_IMAGE_MAX_EDGE, REFERENCE_IMAGE_MAX_EDGE), RESAMPLING.LANCZOS)
 
@@ -584,7 +604,8 @@ def _analyze_reference_images(reference_paths: List[Path], prompt: str, style_ta
                 "Summarize reusable visual traits from these game-art reference images for a new asset prompt. "
                 "Use them as style evidence only; do not ask to copy the source art verbatim. "
                 "Be concise and cover resolution feel, shape language, outline, palette, shading, silhouette, "
-                "material details, and what to avoid.\n"
+                "material details, and what to avoid. Ignore neutral gray backgrounds, cutout mats, transparency "
+                "previews, checkerboard patterns, and empty padding; never recommend drawing those in generated art.\n"
                 "User prompt: %s\nStyle target: %s\nAsset type: %s"
                 % (prompt, style_target, asset_type)
             ),
@@ -607,7 +628,8 @@ def _analyze_reference_images(reference_paths: List[Path], prompt: str, style_ta
                     "role": "system",
                     "content": (
                         "You are a concise game art director. Extract transferable visual traits from references. "
-                        "Never instruct the image model to duplicate, trace, or reproduce an existing asset."
+                        "Never instruct the image model to duplicate, trace, or reproduce an existing asset. "
+                        "Never mention gray backgrounds, checkerboards, cutout mats, transparency grids, or empty padding."
                     ),
                 },
                 {"role": "user", "content": content},
@@ -727,11 +749,47 @@ def _block_material_profile(plan: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width: int, source_height: int) -> str:
+def _block_face_user_prompt(plan: Dict[str, Any]) -> str:
+    user_prompt = str(plan.get("user_prompt") or "").strip()
+    if user_prompt:
+        return user_prompt
+
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
     primary_description = str(plan.get("description") or descriptions.get("primary") or "").strip()
+    reference_context = plan.get("reference_context") if isinstance(plan.get("reference_context"), dict) else None
+    suffix = _reference_prompt_suffix(reference_context)
+    if suffix and primary_description.endswith(suffix):
+        return primary_description[: -len(suffix)].rstrip(" .")
+    if "Reference image style traits to apply without copying source art verbatim:" in primary_description:
+        return primary_description.split("Reference image style traits to apply without copying source art verbatim:")[0].strip(" .")
+    return primary_description
+
+
+def _block_face_match_clause(profile_key: str, face: str) -> str:
+    if profile_key != "forest":
+        return ""
+    if face == "top":
+        return (
+            "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, "
+            "moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the "
+            "matching front face of this block. "
+        )
+    return (
+        "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same "
+        "green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
+    )
+
+
+def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width: int, source_height: int) -> str:
+    descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
+    user_prompt = _block_face_user_prompt(plan)
     planned_face_description = str(descriptions.get(face) or "").strip()
     profile = _block_material_profile(plan)
+    profile_key = ""
+    for key, candidate in BLOCK_MATERIAL_PROFILES.items():
+        if profile is candidate:
+            profile_key = key
+            break
     profile_face_description = str(profile.get(face, "")).strip() if profile else ""
     profile_title = str(profile.get("title", "")).strip() if profile else ""
     material_parts: List[str] = []
@@ -740,9 +798,14 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
         if profile_title:
             material_parts.append("Block profile: %s" % profile_title)
     elif planned_face_description:
-        material_parts.append("Face material details: %s" % planned_face_description.rstrip("."))
-    if primary_description:
-        material_parts.append("Original user material request: %s" % primary_description.rstrip("."))
+        cleaned_face_description = planned_face_description
+        if "Reference image style traits to apply without copying source art verbatim:" in cleaned_face_description:
+            cleaned_face_description = cleaned_face_description.split(
+                "Reference image style traits to apply without copying source art verbatim:"
+            )[0].strip(" .")
+        material_parts.append("Face material details: %s" % cleaned_face_description.rstrip("."))
+    if user_prompt:
+        material_parts.append("Original user material request: %s" % user_prompt.rstrip("."))
     if not material_parts:
         material_parts.append("Material idea: game block material texture")
 
@@ -750,6 +813,7 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     style_title = str(style_context.get("title") or style_context.get("key") or "").strip()
     has_style_target = bool(style_context.get("target_style_selected", style_title and style_title.lower() not in {"none", "no style target"}))
     style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
+    match_part = _block_face_match_clause(profile_key, face)
 
     if face == "top":
         face_label = "top horizontal face"
@@ -772,8 +836,10 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
         "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
         "Draw only the %s material for a game block. "
         "%s.%s "
-        "%s"
-        "Fill the entire canvas edge-to-edge with texture. "
+        "%s%s"
+        "Fill the entire canvas edge-to-edge with opaque material texture. "
+        "Every pixel must be filled with solid material color; no transparency, no empty areas, no checkerboard, "
+        "no gray cutout background, and no matte padding. "
         "No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. "
         "Crisp pixel art, hard edges, limited palette, tileable material texture."
     ) % (
@@ -783,6 +849,7 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
         ". ".join(material_parts),
         style_part,
         face_rules,
+        match_part,
     )
 
 
@@ -1073,6 +1140,7 @@ def _fallback_generation_plan(
         notes.append("Reference image analysis unavailable: %s" % reference_context["failure"])
 
     plan = {
+        "user_prompt": prompt,
         "description": description,
         "descriptions": {
             "primary": description,
@@ -1187,6 +1255,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         notes = list(notes) + ["Reference image analysis unavailable: %s" % reference_context["failure"]]
 
     resolved_plan = {
+        "user_prompt": request.prompt,
         "description": primary_description,
         "descriptions": {
             "primary": primary_description,
@@ -1442,28 +1511,27 @@ def _slice_tile_outputs(image: Image.Image, target_folder: Path, filename_stub: 
     return outputs
 
 
+def _flatten_opaque_texture(image: Image.Image, fallback_rgb: Tuple[int, int, int]) -> Image.Image:
+    background = Image.new("RGBA", image.size, fallback_rgb + (255,))
+    foreground = image.convert("RGBA")
+    return Image.alpha_composite(background, foreground)
+
+
 def _compose_two_face_block(top_bytes: bytes, front_bytes: bytes, config: Dict[str, Any]) -> Image.Image:
     final_width = int(config.get("final_width") or 32)
     top_height = int(config.get("top_height") or 16)
     front_height = int(config.get("front_height") or 32)
-    top_face = _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST)
-    front_face = _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST)
-    composed = Image.new("RGBA", (final_width, top_height + front_height), (0, 0, 0, 0))
-    cap_mask = Image.new("L", (final_width, top_height), 0)
-    top_inset = max(2, final_width // 8)
-    ImageDraw.Draw(cap_mask).polygon(
-        [
-            (top_inset, 0),
-            (final_width - top_inset - 1, 0),
-            (final_width - 1, top_height - 1),
-            (0, top_height - 1),
-        ],
-        fill=255,
+    top_face = _flatten_opaque_texture(
+        _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST),
+        (34, 58, 38),
     )
-    top_cap = Image.new("RGBA", (final_width, top_height), (0, 0, 0, 0))
-    top_cap.paste(top_face, (0, 0), cap_mask)
-    composed.paste(top_cap, (0, 0), top_cap)
-    composed.paste(front_face, (0, top_height), front_face)
+    front_face = _flatten_opaque_texture(
+        _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST),
+        (74, 52, 34),
+    )
+    composed = Image.new("RGBA", (final_width, top_height + front_height), (0, 0, 0, 255))
+    composed.paste(top_face, (0, 0))
+    composed.paste(front_face, (0, top_height))
     return composed
 
 
@@ -1511,9 +1579,12 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         top_path = target_folder / ("%s_top.png" % filename_stub)
         front_path = target_folder / ("%s_front.png" % filename_stub)
         composed_path = target_folder / ("%s.png" % filename_stub)
-        _save_generated_png(top_bytes, top_path)
-        _save_generated_png(front_bytes, front_path)
-        _save_png(_compose_two_face_block(top_bytes, front_bytes, face_config), composed_path)
+        composed = _compose_two_face_block(top_bytes, front_bytes, face_config)
+        top_face = composed.crop((0, 0, final_width, top_height))
+        front_face = composed.crop((0, top_height, final_width, top_height + front_height))
+        _save_png(top_face, top_path)
+        _save_png(front_face, front_path)
+        _save_png(composed, composed_path)
         _append_output(outputs, composed_path, "block_texture")
         _append_output(outputs, top_path, "top_face_source")
         _append_output(outputs, front_path, "front_face_source")
