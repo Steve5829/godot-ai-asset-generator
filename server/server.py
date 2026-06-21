@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse
 
 import requests
@@ -76,6 +76,12 @@ REFERENCE_IMAGE_MAX_EDGE = 512
 RESAMPLING = getattr(Image, "Resampling", Image)
 PIXELLAB_MIN_IMAGE_SIZE = 32
 PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
+REFERENCE_IMAGE_SYNONYM_GROUPS = (
+    {"potion", "healing", "bottle", "vial", "flask", "elixir"},
+    {"sword", "blade", "weapon"},
+    {"ore", "crystal", "mineral"},
+    {"block", "wall", "ground", "stone", "dirt", "grass", "root", "leaf", "forest"},
+)
 SUPPORTED_STYLE_TARGETS = set(STYLE_MATRIX.keys()) or {
     "core_keeper",
     "terraria",
@@ -478,7 +484,52 @@ def _list_reference_images(directory: Path) -> List[Path]:
     )
 
 
-def _select_reference_images(style_target: str, asset_type: str) -> List[Path]:
+def _reference_tokens(value: str) -> Set[str]:
+    tokens = set()
+    for token in re.findall(r"[a-z0-9]+", str(value or "").lower()):
+        tokens.add(token)
+        if len(token) > 3 and token.endswith("s"):
+            tokens.add(token[:-1])
+    return tokens
+
+
+def _expand_reference_tokens(tokens: Set[str]) -> Set[str]:
+    expanded = set(tokens)
+    for synonym_group in REFERENCE_IMAGE_SYNONYM_GROUPS:
+        if expanded.intersection(synonym_group):
+            expanded.update(synonym_group)
+    return expanded
+
+
+def _reference_prompt_score(prompt_tokens: Set[str], expanded_prompt_tokens: Set[str], path: Path) -> int:
+    filename_tokens = _reference_tokens(path.stem)
+    if not filename_tokens:
+        return 0
+
+    exact_overlap = prompt_tokens.intersection(filename_tokens)
+    synonym_overlap = expanded_prompt_tokens.intersection(_expand_reference_tokens(filename_tokens))
+    return (len(exact_overlap) * 2) + len(synonym_overlap)
+
+
+def _rank_reference_images(candidates: List[Path], prompt: str) -> List[Path]:
+    prompt_tokens = _reference_tokens(prompt)
+    if not prompt_tokens:
+        return candidates
+
+    expanded_prompt_tokens = _expand_reference_tokens(prompt_tokens)
+    scored = [
+        (_reference_prompt_score(prompt_tokens, expanded_prompt_tokens, path), path)
+        for path in candidates
+    ]
+    matches = sorted(
+        ((score, path) for score, path in scored if score > 0),
+        key=lambda item: (-item[0], item[1].name.lower()),
+    )
+    non_matches = [path for score, path in scored if score == 0]
+    return [path for _, path in matches] + non_matches
+
+
+def _select_reference_images(style_target: str, asset_type: str, prompt: str = "") -> List[Path]:
     normalized_style = _normalize_style_target(style_target)
     if normalized_style == "none":
         return []
@@ -490,7 +541,7 @@ def _select_reference_images(style_target: str, asset_type: str) -> List[Path]:
         candidates = _list_reference_images(style_root)
     if not candidates and normalized_asset_type == "icon":
         candidates = _list_reference_images(style_root / "icon")
-    return candidates[:MAX_REFERENCE_IMAGES]
+    return _rank_reference_images(candidates, prompt)[:MAX_REFERENCE_IMAGES]
 
 
 def _image_data_url(path: Path) -> str:
@@ -574,7 +625,7 @@ def _analyze_reference_images(reference_paths: List[Path], prompt: str, style_ta
 
 
 def _build_reference_context(prompt: str, style_target: str, asset_type: str) -> Optional[Dict[str, Any]]:
-    reference_paths = _select_reference_images(style_target, asset_type)
+    reference_paths = _select_reference_images(style_target, asset_type, prompt)
     if not reference_paths:
         return None
 

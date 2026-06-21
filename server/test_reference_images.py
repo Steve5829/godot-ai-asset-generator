@@ -41,6 +41,51 @@ class ReferenceImageTests(unittest.TestCase):
 
             self.assertEqual(selected, [reference_path])
 
+    def test_select_reference_images_prioritizes_prompt_filename_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            reference_dir = root / "core_keeper" / "icon"
+            sword_path = reference_dir / "01_sword.png"
+            ore_path = reference_dir / "02_ore.png"
+            potion_path = reference_dir / "03_potion.png"
+            for path in (sword_path, ore_path, potion_path):
+                _write_reference_image(path)
+
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root):
+                selected = server._select_reference_images("core_keeper", "icon", "healing potion icon")
+
+            self.assertEqual(selected, [potion_path, sword_path, ore_path])
+
+    def test_select_reference_images_uses_conservative_synonyms(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            reference_dir = root / "core_keeper" / "icon"
+            sword_path = reference_dir / "01_sword.png"
+            ore_path = reference_dir / "02_ore.png"
+            potion_path = reference_dir / "03_potion.png"
+            for path in (sword_path, ore_path, potion_path):
+                _write_reference_image(path)
+
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root):
+                selected = server._select_reference_images("core_keeper", "icon", "healing bottle icon")
+
+            self.assertEqual(selected, [potion_path, sword_path, ore_path])
+
+    def test_select_reference_images_without_prompt_match_uses_sorted_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            reference_dir = root / "core_keeper" / "icon"
+            sword_path = reference_dir / "01_sword.png"
+            ore_path = reference_dir / "02_ore.png"
+            potion_path = reference_dir / "03_potion.png"
+            for path in (sword_path, ore_path, potion_path):
+                _write_reference_image(path)
+
+            with patch.object(server, "REFERENCE_IMAGE_ROOT", root):
+                selected = server._select_reference_images("core_keeper", "icon", "lantern icon")
+
+            self.assertEqual(selected, [sword_path, ore_path, potion_path])
+
     def test_vision_helper_uses_chat_completion_and_returns_text(self) -> None:
         class MockResponse:
             def raise_for_status(self) -> None:

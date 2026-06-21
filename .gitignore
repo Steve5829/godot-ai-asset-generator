@@ -227,5 +227,13 @@ server/logs/
 *.jpeg.import
 *.webp.import
 
+# Reference image dataset should be versioned so clones can use it.
+!server/reference_images/
+!server/reference_images/**/
+!server/reference_images/**/*.png
+!server/reference_images/**/*.jpg
+!server/reference_images/**/*.jpeg
+!server/reference_images/**/*.webp
+
 __pycache__/
 .env
