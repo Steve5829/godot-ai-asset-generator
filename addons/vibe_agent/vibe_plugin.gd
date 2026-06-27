@@ -381,6 +381,7 @@ func _send_request(request_kind: String, payload: Dictionary):
 
 	pending_request_kind = request_kind
 	pending_request_context = payload
+	_print_request_log(request_kind, payload)
 
 	var error = http_request.request(
 		BACKEND_URL + "/" + request_kind,
@@ -395,6 +396,49 @@ func _send_request(request_kind: String, payload: Dictionary):
 		return
 
 	print("Vibe request sent: ", request_kind)
+
+
+func _print_request_log(request_kind: String, payload: Dictionary):
+	print("Vibe request start: ", request_kind)
+	if request_kind == "generate":
+		print(
+			"  prompt: ",
+			String(payload.get("prompt", "")),
+			" | provider: ",
+			String(payload.get("provider", "unknown")),
+			" | style: ",
+			String(payload.get("style_target", "none")),
+			" | asset_type: ",
+			String(payload.get("asset_type", "auto")),
+			" | workflow_mode: ",
+			String(payload.get("workflow_mode", "auto"))
+		)
+	elif payload.has("prompt"):
+		print("  prompt: ", String(payload.get("prompt", "")))
+
+
+func _print_backend_error_log(payload: Dictionary, response_code: int):
+	print("Backend processing failed: ", payload.get("message", "unknown error"))
+	if response_code >= 400:
+		print("  http_status: ", response_code)
+	var log_path = String(payload.get("log_path", ""))
+	var log_event_id = String(payload.get("log_event_id", ""))
+	if not log_path.is_empty():
+		print("  generation_log: ", log_path, " event: ", log_event_id)
+	var plan = payload.get("plan", {})
+	if typeof(plan) != TYPE_DICTIONARY:
+		plan = {}
+	var workflow = String(payload.get("workflow", plan.get("workflow", "unknown")))
+	var provider = String(payload.get("provider", plan.get("provider", "unknown")))
+	var planning_source = String(payload.get("planning_source", plan.get("planning_source", "unknown")))
+	print(
+		"  workflow: ",
+		workflow,
+		" provider: ",
+		provider,
+		" planning: ",
+		planning_source
+	)
 
 
 func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
@@ -416,7 +460,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
 	var status = String(payload.get("status", ""))
 	if status != "success":
-		print("Backend processing failed: ", payload.get("message", "unknown error"))
+		_print_backend_error_log(payload, response_code)
 		return
 
 	var msg_type = String(payload.get("type", ""))

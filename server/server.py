@@ -17,14 +17,7 @@ from fastapi import FastAPI
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-try:
-    from style_matrix import STYLE_MATRIX, style_profile_dict
-except Exception as exc:
-    print("Failed to import style matrix:", exc)
-    STYLE_MATRIX = {}
-
-    def style_profile_dict(style_key: str) -> Dict[str, str]:
-        raise KeyError("Style matrix is unavailable")
+from style_matrix import STYLE_MATRIX, style_profile_dict
 
 BASE_DIR = Path(__file__).resolve().parent
 for env_path in (
@@ -124,7 +117,7 @@ ASSET_TYPE_SPECS = {
         "default_height": 96,
         "no_background": False,
         "prompt_guidance": (
-            "Create a compact block or voxel-style texture with readable top/front material cues. "
+            "Create a compact block texture with readable top/front material cues. "
             "Use crisp edges and proportions suitable for a placeable terrain or building block."
         ),
     },
@@ -154,9 +147,9 @@ SUPPORTED_GENERATION_PROVIDERS = {"pixellab", "openai_image"}
 BLOCK_MATERIAL_PROFILES = {
     "forest": {
         "title": "Forest Grass Dirt Block",
-        "keywords": ("forest", "grass", "leaf", "leaves", "moss", "root", "roots", "tree", "wood"),
+        "keywords": ("forest", "grass", "leaf", "leaves", "moss", "root", "roots", "tree"),
         "top": (
-            "dense Core Keeper forest ground canopy made of many rounded green leaf clusters, "
+            "dense forest ground canopy made of many rounded green leaf clusters, "
             "clover-like leaf shapes, moss patches, tiny yellow flower dots, dark teal shadow gaps, "
             "organic leafy noise; mostly green, not plain flat grass"
         ),
@@ -183,12 +176,787 @@ BLOCK_MATERIAL_PROFILES = {
         "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture",
     },
     "barren": {
-        "title": "Barren Cracked Stone Block",
-        "keywords": ("barren", "stone", "rock", "cracked", "dusty"),
-        "top": "dry gray-brown cracked stone top surface, dusty rubble, sparse dark fractures, desaturated rocky pixel texture",
-        "front": "vertical cracked stone wall with jagged fissures, dusty sediment, muted gray and brown palette, rough barren texture",
+        "title": "Stone Block",
+        "keywords": ("barren", "stone", "rock", "cracked", "dusty", "cobblestone", "deepslate", "granite", "andesite"),
+        "uniform": True,
+        "material": (
+            "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, "
+            "simple repeatable stone grain; the exact same material on every block face"
+        ),
+        "top": (
+            "flat gray pixel-art stone top surface with low-contrast pixel noise, subtle darker gray specks, "
+            "simple repeatable stone grain; identical to the other faces of this stone block"
+        ),
+        "front": (
+            "flat gray pixel-art stone vertical face with low-contrast pixel noise, subtle darker gray specks, "
+            "simple repeatable stone grain; identical to the other faces of this stone block"
+        ),
+        "side": (
+            "flat gray pixel-art stone side face with low-contrast pixel noise, subtle darker gray specks, "
+            "simple repeatable stone grain; identical to the other faces of this stone block"
+        ),
+    },
+    "gem": {
+        "title": "Gem Mineral Block",
+        "keywords": ("diamond", "emerald", "lapis", "quartz", "amethyst", "ruby", "sapphire", "gem", "mineral"),
+        "uniform": True,
+        "material": (
+            "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; "
+            "for diamond block use light cyan and aqua blue specks on a bright cyan base; "
+            "for emerald block use green and teal specks on a bright emerald base; "
+            "for lapis block use deep blue and navy specks on a royal blue base; "
+            "identical flat block material on every face; "
+            "NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration"
+        ),
+        "top": (
+            "diamond mineral block top face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
+            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
+        ),
+        "front": (
+            "diamond mineral block front face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
+            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
+        ),
+        "side": (
+            "diamond mineral block side face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
+            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
+        ),
+    },
+    "metal": {
+        "title": "Metal Block",
+        "keywords": ("iron", "metal", "steel", "copper", "bronze", "silver", "gold", "ingot", "tin", "zinc"),
+        "uniform": True,
+        "material": (
+            "flat metal block material selected from the user's requested metal; "
+            "gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, "
+            "iron and steel blocks must be silver-gray, copper blocks must be orange-copper, "
+            "and every face must use the exact same metal material; no gray rock, no stone grain, "
+            "no grass, no dirt, no ore crystals"
+        ),
+        "top": (
+            "metal block top face using the user's requested metal color: gold means bright yellow-gold with amber "
+            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
+            "identical to the other faces"
+        ),
+        "front": (
+            "metal block front face using the user's requested metal color: gold means bright yellow-gold with amber "
+            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
+            "identical to the other faces"
+        ),
+        "side": (
+            "metal block side face using the user's requested metal color: gold means bright yellow-gold with amber "
+            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
+            "identical to the other faces"
+        ),
+    },
+    "obsidian": {
+        "title": "Obsidian Block",
+        "keywords": ("obsidian", "volcanic", "glassy", "scoria"),
+        "uniform": True,
+        "material": (
+            "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, "
+            "tiny lighter purple specks scattered sparsely, smooth glassy not rocky, "
+            "no grass, no stone grain, no brick grid, no mortar lines"
+        ),
+        "top": (
+            "obsidian block top face: very dark purple-black base with sparse violet pixel specks, "
+            "smooth volcanic glass texture, identical to other faces; no brick, no cracks, no grass"
+        ),
+        "front": (
+            "obsidian block front face: very dark purple-black base with sparse violet pixel specks, "
+            "smooth volcanic glass texture, identical to other faces; no brick grid, no mortar lines, no cobblestone"
+        ),
+        "side": (
+            "obsidian block side face: very dark purple-black base with sparse violet pixel specks, "
+            "smooth volcanic glass texture, identical to other faces; no brick grid, no mortar lines"
+        ),
+    },
+    "ice": {
+        "title": "Ice / Snow Block",
+        "keywords": ("ice", "frozen", "frost", "snow", "snowy", "glacier", "tundra"),
+        "uniform": True,
+        "material": (
+            "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, "
+            "tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, "
+            "for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass"
+        ),
+        "top": (
+            "ice/snow block top face: pale cyan-white base with tiny sparkle specks and soft blue shadow noise, "
+            "identical to other faces; no grass, no dirt, no brick"
+        ),
+        "front": (
+            "ice/snow block front face: pale cyan-white base with subtle frost cracks and soft blue shadow noise, "
+            "identical to other faces; no brick grid, no mortar, no dirt edge"
+        ),
+        "side": (
+            "ice/snow block side face: pale cyan-white base with subtle frost cracks and soft blue shadow noise, "
+            "identical to other faces; no brick grid, no mortar lines"
+        ),
+    },
+    "glass": {
+        "title": "Glass Block",
+        "keywords": ("glass", "glasspane", "window", "stained"),
+        "uniform": True,
+        "material": (
+            "flat translucent glass block material with a 1px lighter rim on all four edges, "
+            "very pale tint inside, sparse single-pixel highlights, mostly empty interior; "
+            "no brick grid, no stone, no grass; the rim suggests a glass pane edge"
+        ),
+        "top": (
+            "glass block top face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
+            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
+        ),
+        "front": (
+            "glass block front face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
+            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
+        ),
+        "side": (
+            "glass block side face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
+            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
+        ),
+    },
+    "brick": {
+        "title": "Brick Block",
+        "keywords": ("brick", "bricks", "masonry", "mortar"),
+        "uniform": True,
+        "material": (
+            "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, "
+            "thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of "
+            "red, orange, or tan for natural variation; tileable seamlessly on all edges"
+        ),
+        "top": (
+            "brick block top face: same red-orange brick rectangles and gray mortar grid as the other faces, "
+            "tileable; no grass, no dirt cap, no separate material on top"
+        ),
+        "front": (
+            "brick block front face: red-orange brick rectangles in a staggered row pattern with thin gray mortar, "
+            "natural brick-to-brick color variation; identical to other faces"
+        ),
+        "side": (
+            "brick block side face: red-orange brick rectangles in a staggered row pattern with thin gray mortar, "
+            "natural brick-to-brick color variation; identical to other faces"
+        ),
+    },
+    "nether": {
+        "title": "Nether / Volcanic Block",
+        "keywords": ("nether", "netherrack", "lava", "magma", "hellstone", "infernal"),
+        "uniform": True,
+        "material": (
+            "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, "
+            "small black pitted holes, ember-like bright pixels scattered sparsely; "
+            "no gray stone, no brick grid, no grass, no water"
+        ),
+        "top": (
+            "nether block top face: deep maroon base with sparse orange ember specks and small black pits, "
+            "identical to other faces; no brick, no grass"
+        ),
+        "front": (
+            "nether block front face: deep maroon base with sparse orange ember specks and small black pits, "
+            "identical to other faces; no brick grid, no mortar, no separate top surface"
+        ),
+        "side": (
+            "nether block side face: deep maroon base with sparse orange ember specks and small black pits, "
+            "identical to other faces; no brick grid, no mortar lines"
+        ),
+    },
+    "mushroom": {
+        "title": "Mushroom Block",
+        "keywords": ("mushroom", "fungus", "shroom", "toadstool"),
+        "uniform": True,
+        "material": (
+            "flat mushroom block material: red cap face has bright red base with round white spots, "
+            "stem face has cream-white base with subtle vertical fiber lines; "
+            "no grass, no dirt, no stone, no brick"
+        ),
+        "top": (
+            "mushroom cap top face: bright red base with 4-6 round white spots, slight darker red shadow noise, "
+            "no grass, no stem texture"
+        ),
+        "front": (
+            "mushroom stem front face: cream-white base with subtle vertical fiber lines and pale tan shadow noise, "
+            "no grass, no dirt"
+        ),
+        "side": (
+            "mushroom stem side face: cream-white base with subtle vertical fiber lines and pale tan shadow noise, "
+            "no grass, no dirt"
+        ),
+    },
+    "dirt": {
+        "title": "Plain Dirt Block",
+        "keywords": ("dirt", "soil", "mud", "earth", "loam"),
+        "uniform": True,
+        "material": (
+            "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, "
+            "tiny lighter tan pebble pixels, small black holes; "
+            "no grass top, no roots, no stone, no brick"
+        ),
+        "top": (
+            "dirt block top face: warm brown base with darker shadow specks and small lighter pebbles, "
+            "identical to other faces; no grass cap, no roots"
+        ),
+        "front": (
+            "dirt block front face: warm brown base with darker shadow specks and small lighter pebbles, "
+            "identical to other faces; no roots, no brick grid, no separate top surface"
+        ),
+        "side": (
+            "dirt block side face: warm brown base with darker shadow specks and small lighter pebbles, "
+            "identical to other faces; no roots, no brick grid"
+        ),
+    },
+    "wood": {
+        "title": "Wood Log Block",
+        "keywords": ("wood", "log", "plank", "planks", "oak", "birch", "spruce", "jungle", "bark", "timber"),
+        "top": (
+            "oak log top with circular growth rings, light tan and medium brown ring bands, "
+            "simple flat pixel texture, no grass and no leaves"
+        ),
+        "front": (
+            "oak log bark with vertical brown stripes, medium brown base with darker brown grooves, "
+            "simple flat pixel texture, no grass, no dirt, and no leaves"
+        ),
+        "side": (
+            "oak log bark side face with the same vertical brown stripe pattern and palette as the front face, "
+            "simple flat pixel texture, no grass, no dirt, and no leaves"
+        ),
+    },
+    "clay": {
+        "title": "Clay / Terracotta Block",
+        "keywords": ("clay", "terracotta", "ceramic", "kaolin"),
+        "uniform": True,
+        "material": (
+            "smooth warm orange-brown ceramic block with low-contrast pixel noise, "
+            "subtle darker terracotta speck variations, no cracks; identical on every face"
+        ),
+        "top": "terracotta top face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick grid",
+        "front": "terracotta front face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick, no mortar",
+        "side": "terracotta side face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick, no mortar",
+    },
+    "end_stone": {
+        "title": "End Stone Block",
+        "keywords": ("end", "endstone", "purpur"),
+        "match_all": ("end",),
+        "uniform": True,
+        "material": (
+            "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, "
+            "alien smooth texture; no grass, no brick"
+        ),
+        "top": "end stone top face: pale yellow-tan rocky surface with cream highlights, small darker pits; identical to other faces",
+        "front": "end stone front face: pale yellow-tan rocky wall with cream highlights, small darker pits; identical to other faces",
+        "side": "end stone side face: pale yellow-tan rocky wall with cream highlights, small darker pits; identical to other faces",
+    },
+    "prismarine": {
+        "title": "Prismarine Block",
+        "keywords": ("prismarine", "aquamarine"),
+        "uniform": True,
+        "material": (
+            "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker "
+            "teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass"
+        ),
+        "top": "prismarine top face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
+        "front": "prismarine front face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
+        "side": "prismarine side face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
+    },
+    "basalt": {
+        "title": "Basalt Block",
+        "keywords": ("basalt", "columnar"),
+        "uniform": True,
+        "material": (
+            "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, "
+            "subtle warmer brown speck noise; no brick grid, no mortar"
+        ),
+        "top": "basalt top face: dark gray hexagonal column ends with near-black grooves between cells; identical to other faces",
+        "front": "basalt front face: dark gray vertical column striations with near-black grooves; identical to other faces",
+        "side": "basalt side face: dark gray vertical column striations with near-black grooves; identical to other faces",
+    },
+    "calcite": {
+        "title": "Calcite Block",
+        "keywords": ("calcite", "chalk"),
+        "uniform": True,
+        "material": (
+            "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; "
+            "no brick, no grass, no cracks"
+        ),
+        "top": "calcite top face: pale off-white with subtle gray noise; identical to other faces",
+        "front": "calcite front face: pale off-white with subtle gray noise; identical to other faces",
+        "side": "calcite side face: pale off-white with subtle gray noise; identical to other faces",
+    },
+    "soul_sand": {
+        "title": "Soul Sand Block",
+        "keywords": ("soul", "soulsand"),
+        "match_all": ("soul",),
+        "uniform": True,
+        "material": (
+            "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; "
+            "no brick, no grass"
+        ),
+        "top": "soul sand top face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
+        "front": "soul sand front face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
+        "side": "soul sand side face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
+    },
+    "coal_block": {
+        "title": "Coal Block",
+        "keywords": ("coal",),
+        "uniform": True,
+        "material": (
+            "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, "
+            "smooth dense look; no brick, no grass"
+        ),
+        "top": "coal block top face: near-black base with subtle dark-gray specks; identical to other faces",
+        "front": "coal block front face: near-black base with subtle dark-gray specks; identical to other faces",
+        "side": "coal block side face: near-black base with subtle dark-gray specks; identical to other faces",
+    },
+    "glowstone": {
+        "title": "Glowstone Block",
+        "keywords": ("glowstone", "luminous"),
+        "uniform": True,
+        "material": (
+            "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, "
+            "soft inner glow halo; no brick, no grass"
+        ),
+        "top": "glowstone top face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
+        "front": "glowstone front face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
+        "side": "glowstone side face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
+    },
+    "redstone_block": {
+        "title": "Redstone Block",
+        "keywords": ("redstone",),
+        "match_all": ("redstone",),
+        "uniform": True,
+        "material": (
+            "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, "
+            "faint pinkish circuit-dust scatter; no brick, no grass"
+        ),
+        "top": "redstone block top face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
+        "front": "redstone block front face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
+        "side": "redstone block side face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
+    },
+    "bone_block": {
+        "title": "Bone Block",
+        "keywords": ("bone",),
+        "match_all": ("bone",),
+        "uniform": True,
+        "material": (
+            "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, "
+            "subtle pale gray shadow noise; no brick, no grass"
+        ),
+        "top": "bone block top face: cream-white surface with two or three small dark hollow circles, like cross-section of bones; identical to other faces",
+        "front": "bone block front face: cream-white surface with thin vertical dark gray hollow lines; identical to other faces",
+        "side": "bone block side face: cream-white surface with thin vertical dark gray hollow lines; identical to other faces",
+    },
+    "wool": {
+        "title": "Wool / Cloth Block",
+        "keywords": ("wool", "cloth", "carpet"),
+        "uniform": True,
+        "material": (
+            "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs "
+            "(color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); "
+            "soft texture, no brick, no grass"
+        ),
+        "top": "wool top face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
+        "front": "wool front face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
+        "side": "wool side face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
+    },
+    "hay_bale": {
+        "title": "Hay Bale Block",
+        "keywords": ("hay", "haystack", "straw"),
+        "top": (
+            "hay bale top face: concentric circle of bound golden straw seen end-on, warm yellow base, "
+            "darker tan stripe rings, small specks of straw fiber"
+        ),
+        "front": (
+            "hay bale front face: horizontal bands of bound golden straw with vertical fiber lines, "
+            "warm yellow base, darker tan shadow stripes; no grass top"
+        ),
+        "side": (
+            "hay bale side face: horizontal bands of bound golden straw with vertical fiber lines, "
+            "matching the front face palette"
+        ),
+    },
+    "honeycomb": {
+        "title": "Honeycomb Block",
+        "keywords": ("honeycomb", "honey"),
+        "uniform": True,
+        "material": (
+            "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, "
+            "single highlight pixels in each cell suggesting honey; no brick, no grass"
+        ),
+        "top": "honeycomb top face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
+        "front": "honeycomb front face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
+        "side": "honeycomb side face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
+    },
+    "slime_block": {
+        "title": "Slime Block",
+        "keywords": ("slime", "gel", "jelly"),
+        "uniform": True,
+        "material": (
+            "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs "
+            "suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass"
+        ),
+        "top": "slime block top face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
+        "front": "slime block front face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
+        "side": "slime block side face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
+    },
+    "cactus": {
+        "title": "Cactus Block",
+        "keywords": ("cactus", "saguaro"),
+        "uniform": True,
+        "material": (
+            "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots "
+            "scattered, slightly paler green highlights; no brick, no grass"
+        ),
+        "top": "cactus top face: medium green base with darker concentric ring and small spine dots in the center; identical to other faces",
+        "front": "cactus front face: medium green base with vertical darker ridges and small white spine dots; identical to other faces",
+        "side": "cactus side face: medium green base with vertical darker ridges and small white spine dots; identical to other faces",
+    },
+    "moss_block": {
+        "title": "Moss Block",
+        "keywords": ("moss", "mossblock"),
+        "match_all": ("moss",),
+        "uniform": True,
+        "material": (
+            "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow "
+            "highlight specks, organic clumpy texture; no leaves, no dirt, no roots"
+        ),
+        "top": "moss block top face: bright moss-green base with darker clusters and lime specks; identical to other faces",
+        "front": "moss block front face: bright moss-green base with darker clusters and lime specks; identical to other faces",
+        "side": "moss block side face: bright moss-green base with darker clusters and lime specks; identical to other faces",
+    },
+    "leaves_block": {
+        "title": "Leaves Block",
+        "keywords": ("leaves",),
+        "match_all": ("leaves",),
+        "uniform": True,
+        "material": (
+            "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded "
+            "leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood"
+        ),
+        "top": "leaves block top face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
+        "front": "leaves block front face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
+        "side": "leaves block side face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
+    },
+    "pumpkin": {
+        "title": "Pumpkin Block",
+        "keywords": ("pumpkin", "jack", "lantern"),
+        "top": (
+            "pumpkin top face: warm orange surface with a small green-brown stem in the center, faint darker "
+            "orange ridges radiating outward"
+        ),
+        "front": (
+            "pumpkin front face: warm orange base with vertical darker orange ridges; if jack-o-lantern, "
+            "include simple carved eyes and grin in dark cutouts; no brick"
+        ),
+        "side": (
+            "pumpkin side face: warm orange base with vertical darker orange ridges matching the front face palette; no carving on side"
+        ),
+    },
+    "mycelium": {
+        "title": "Mycelium Block",
+        "keywords": ("mycelium", "fungus_dirt"),
+        "top": (
+            "mycelium top face: muted purple-gray surface with scattered tiny darker purple fungal specks "
+            "and faint pale fiber lines"
+        ),
+        "front": (
+            "mycelium front face: warm brown dirt with a thin purple-gray mycelium fringe along the top edge, "
+            "small purple speck drips below; no roots, no grass"
+        ),
+        "side": (
+            "mycelium side face: warm brown dirt with a thin purple-gray mycelium fringe along the top edge, "
+            "matching the front face palette"
+        ),
+    },
+    "podzol": {
+        "title": "Podzol Block",
+        "keywords": ("podzol",),
+        "match_all": ("podzol",),
+        "top": (
+            "podzol top face: dark brown ground with scattered orange-brown fallen pine-needle clusters and "
+            "tiny white snow specks; no grass"
+        ),
+        "front": (
+            "podzol front face: warm brown dirt with a thin orange-brown needle layer along the top edge, "
+            "subtle white snow flecks; no roots, no green grass"
+        ),
+        "side": (
+            "podzol side face: warm brown dirt with a thin orange-brown needle layer along the top edge, "
+            "matching the front face palette"
+        ),
+    },
+    "lava": {
+        "title": "Lava Block",
+        "keywords": ("lava", "magma"),
+        "match_all": ("lava",),
+        "uniform": True,
+        "material": (
+            "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, "
+            "tiny white-hot ember specks; intense inner glow; no brick, no grass"
+        ),
+        "top": "lava top face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
+        "front": "lava front face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
+        "side": "lava side face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
+    },
+    # Terraria evil biomes
+    "ebonstone": {
+        "title": "Ebonstone Block (Corruption)",
+        "keywords": ("ebonstone", "corruption", "corrupt"),
+        "uniform": True,
+        "material": (
+            "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, "
+            "ominous shadow gaps; no brick, no grass"
+        ),
+        "top": "ebonstone top face: dark purple-black corrupted stone with violet cracks; identical to other faces",
+        "front": "ebonstone front face: dark purple-black corrupted stone with violet cracks; identical to other faces",
+        "side": "ebonstone side face: dark purple-black corrupted stone with violet cracks; identical to other faces",
+    },
+    "crimstone": {
+        "title": "Crimstone Block (Crimson)",
+        "keywords": ("crimstone", "crimson", "crimtane"),
+        "uniform": True,
+        "material": (
+            "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red "
+            "specks; organic ominous look; no brick, no grass"
+        ),
+        "top": "crimstone top face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
+        "front": "crimstone front face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
+        "side": "crimstone side face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
+    },
+    "pearlstone": {
+        "title": "Pearlstone Block (Hallow)",
+        "keywords": ("pearlstone", "hallow", "hallowed"),
+        "uniform": True,
+        "material": (
+            "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, "
+            "magical pure look; no brick, no grass"
+        ),
+        "top": "pearlstone top face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
+        "front": "pearlstone front face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
+        "side": "pearlstone side face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
+    },
+    "hellstone": {
+        "title": "Hellstone Block",
+        "keywords": ("hellstone", "infernal"),
+        "match_all": ("hellstone",),
+        "uniform": True,
+        "material": (
+            "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, "
+            "tiny ember specks; intense underworld look; no brick, no grass"
+        ),
+        "top": "hellstone top face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
+        "front": "hellstone front face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
+        "side": "hellstone side face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
+    },
+    # Core Keeper biomes
+    "larva_floor": {
+        "title": "Larva Block (Core Keeper)",
+        "keywords": ("larva", "larvae"),
+        "match_all": ("larva",),
+        "uniform": True,
+        "material": (
+            "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, "
+            "soft top-down shading; no brick, no grass, no dirt"
+        ),
+        "top": "larva block top face: warm orange squishy surface with darker fold shadows and cream specks; identical to other faces",
+        "front": "larva block front face: warm orange squishy wall with darker fold shadows and cream specks; identical to other faces",
+        "side": "larva block side face: warm orange squishy wall with darker fold shadows and cream specks; identical to other faces",
+    },
+    "azeos_floor": {
+        "title": "Azeos Ground (Core Keeper)",
+        "keywords": ("azeos", "skyland"),
+        "uniform": True,
+        "material": (
+            "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island "
+            "look; muted earthy palette; no brick, no grass"
+        ),
+        "top": "azeos block top face: pale mint-green stone with darker teal specks; identical to other faces",
+        "front": "azeos block front face: pale mint-green stone with darker teal specks; identical to other faces",
+        "side": "azeos block side face: pale mint-green stone with darker teal specks; identical to other faces",
+    },
+    "shimmering_stone": {
+        "title": "Shimmering Stone (Core Keeper)",
+        "keywords": ("shimmering", "shimmer"),
+        "match_all": ("shimmering",),
+        "uniform": True,
+        "material": (
+            "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, "
+            "magical underground look; no brick, no grass"
+        ),
+        "top": "shimmering stone top face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
+        "front": "shimmering stone front face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
+        "side": "shimmering stone side face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
     },
 }
+
+
+
+ICON_REFERENCE_PROFILES: Dict[str, Dict[str, Any]] = {
+    # Category anchors — describe shape language only, let STYLE_MATRIX and the LLM
+    # handle palette and rendering. Style-specific overrides exist only where
+    # perspective or orientation is something the LLM cannot reliably infer
+    # (e.g. Core Keeper tools are top-down; Terraria weapons sit at a 45deg tilt).
+    "sword": {
+        "title": "Sword",
+        "keywords": ("sword", "blade", "shortsword", "broadsword", "scimitar"),
+        "visual": (
+            "long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. "
+            "Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette "
+            "with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline."
+        ),
+    },
+    "pickaxe": {
+        "title": "Pickaxe",
+        "keywords": ("pickaxe",),
+        "visual": (
+            "mining pickaxe with a curved double-pronged head on top and a short straight handle below. "
+            "Per-style orientation: Core Keeper top-down view; Terraria diagonal 45deg with dark outline; "
+            "Minecraft flat 16x16 with a diagonal T-shape head-and-stick silhouette and no outline."
+        ),
+    },
+    "axe_tool": {
+        "title": "Axe / Hatchet",
+        "keywords": ("axe", "hatchet", "battleaxe"),
+        "match_all": ("axe",),
+        "visual": (
+            "axe with a wedge-shaped head on top of a short handle; head clearly wider than the handle. "
+            "Same per-style orientation rules as a pickaxe (top-down for Core Keeper, 45deg for Terraria, flat tile for Minecraft)."
+        ),
+    },
+    "shovel": {
+        "title": "Shovel",
+        "keywords": ("shovel", "spade"),
+        "visual": (
+            "shovel with a flat spade head and a long handle; head narrower than a pickaxe head. "
+            "Same per-style orientation rules as other tools."
+        ),
+    },
+    "bow_weapon": {
+        "title": "Bow",
+        "keywords": ("bow", "shortbow", "longbow"),
+        "match_all": ("bow",),
+        "visual": (
+            "curved bow body forming a C-shape with a thin tight bowstring along the inside edge; "
+            "1px string must remain readable at the icon size."
+        ),
+    },
+    "potion": {
+        "title": "Potion / Vial",
+        "keywords": ("potion", "vial", "elixir", "flask", "bottle"),
+        "visual": (
+            "small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, "
+            "cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt "
+            "(red for healing, blue for mana, green for poison, etc.)."
+        ),
+    },
+    "coin": {
+        "title": "Coin",
+        "keywords": ("coin", "currency", "doubloon"),
+        "visual": (
+            "circular metal coin viewed face-on, darker rim around the edge, a simple stamped symbol or face in the center, "
+            "one bright highlight pixel for shine. Metal palette follows the prompt (gold, silver, copper)."
+        ),
+    },
+    "key": {
+        "title": "Key",
+        "keywords": ("key", "keys"),
+        "visual": (
+            "small key with a round or ornate bow on one end, a thin straight shaft, and 1-2 simple teeth on the other end; "
+            "compact silhouette so bow and teeth are both readable."
+        ),
+    },
+    "gem_icon": {
+        "title": "Gem / Crystal",
+        "keywords": ("gem", "crystal", "jewel", "diamond", "ruby", "sapphire", "emerald", "amethyst", "topaz"),
+        "visual": (
+            "faceted gemstone with visible flat facets, bright highlight on upper facets and darker shadow facets below; "
+            "color follows the named stone (ruby red, sapphire blue, emerald green, diamond cyan, amethyst purple). "
+            "Centered diamond or hexagon silhouette."
+        ),
+    },
+    "ingot": {
+        "title": "Ingot / Metal Bar",
+        "keywords": ("ingot", "bar", "bullion"),
+        "visual": (
+            "small rectangular smelted metal bar with beveled top edges; a single bright highlight pixel on the top facet. "
+            "Metal palette follows the prompt (gold, iron, copper, steel)."
+        ),
+    },
+    "torch_icon": {
+        "title": "Torch",
+        "keywords": ("torch",),
+        "visual": (
+            "vertical torch: brown wooden stick with a small bright orange-yellow flame at the top; "
+            "faint soft glow halo around the flame."
+        ),
+    },
+    "scroll_book": {
+        "title": "Scroll / Book",
+        "keywords": ("scroll", "parchment", "book", "tome", "spellbook"),
+        "visual": (
+            "rolled parchment scroll with a colored ribbon tie, OR a closed book with a colored cover and gold rim and clasps; "
+            "match whichever the user named. Cream-colored paper edges visible."
+        ),
+    },
+    "food": {
+        "title": "Food",
+        "keywords": ("apple", "bread", "loaf", "berry", "cheese", "meat", "fruit", "food"),
+        "visual": (
+            "small handheld food item centered in the frame: round shape for apple/berry, oval rounded shape for bread/loaf, "
+            "wedge for cheese, irregular chunk for meat. Warm food palette with one small highlight pixel."
+        ),
+    },
+}
+
+
+BLOCK_TEXTURE_STYLE_LAYOUTS: Dict[str, Dict[str, Any]] = {
+    "core_keeper": {
+        "workflow": "block_texture_two_face",
+        "final_width": 32,
+        "top_height": 16,
+        "front_height": 32,
+        "side_height": 0,
+    },
+    "minecraft": {
+        "workflow": "block_texture_three_face",
+        "compose_mode": "isometric",
+        "final_width": 16,
+        "top_height": 16,
+        "front_height": 16,
+        "side_height": 16,
+        "output_width": 32,
+        "output_height": 32,
+    },
+    "terraria": {
+        "workflow": "block_texture_two_face",
+        "final_width": 32,
+        "top_height": 16,
+        "front_height": 32,
+        "side_height": 0,
+    },
+}
+
+
+def _block_texture_layout(style_target: str) -> Dict[str, Any]:
+    normalized = _normalize_style_target(style_target)
+    default_layout = BLOCK_TEXTURE_STYLE_LAYOUTS["core_keeper"]
+    if normalized == "none":
+        return dict(default_layout)
+    return dict(BLOCK_TEXTURE_STYLE_LAYOUTS.get(normalized, default_layout))
+
+
+def _block_profile_key(profile: Optional[Dict[str, Any]]) -> str:
+    if not profile:
+        return ""
+    for key, candidate in BLOCK_MATERIAL_PROFILES.items():
+        if profile is candidate:
+            return key
+    return ""
+
+
+def _block_profile_is_uniform(profile: Optional[Dict[str, Any]]) -> bool:
+    return bool(profile and profile.get("uniform"))
+
+
+def _block_requires_multi_face_generation(plan: Dict[str, Any]) -> bool:
+    profile = _block_material_profile(plan)
+    return bool(profile) and not _block_profile_is_uniform(profile)
 
 
 class GenerateAssetRequest(BaseModel):
@@ -724,6 +1492,18 @@ def _description_with_reference_context(description: str, reference_context: Opt
     return "%s. %s" % (cleaned_description.rstrip("."), suffix)
 
 
+def _enrich_description(
+    description: str,
+    prompt: str,
+    asset_type: str,
+    style_target: str,
+    reference_context: Optional[Dict[str, Any]],
+) -> str:
+    enriched = _description_with_asset_constraints(asset_type, description)
+    enriched = _description_with_icon_profile(enriched, prompt, asset_type, style_target)
+    return _description_with_reference_context(enriched, reference_context)
+
+
 def _ground_provider_description(description: str) -> str:
     cleaned = str(description or "").strip()
     replacements = (
@@ -739,6 +1519,60 @@ def _ground_provider_description(description: str) -> str:
     for pattern, replacement in replacements:
         cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", cleaned).strip()
+
+
+def _icon_reference_profile(prompt: str, style_target: str = "none") -> Optional[Dict[str, Any]]:
+    prompt_tokens = _reference_tokens(prompt)
+    if not prompt_tokens:
+        return None
+
+    normalized_style = _normalize_style_target(style_target)
+    best_profile: Optional[Dict[str, Any]] = None
+    best_score = 0
+    for key, profile in ICON_REFERENCE_PROFILES.items():
+        keywords = profile.get("keywords", ()) or ()
+        match_all = profile.get("match_all") or ()
+        if match_all and not all(token in prompt_tokens for token in match_all):
+            continue
+        keyword_hits = [keyword for keyword in keywords if keyword in prompt_tokens]
+        if not keyword_hits:
+            continue
+        score = len(keyword_hits) * 2
+        if match_all:
+            score += 3
+        if profile.get("style_affinity") == normalized_style and normalized_style != "none":
+            score += 4
+        elif profile.get("style_affinity") and profile["style_affinity"] != normalized_style:
+            score -= 1
+        if score > best_score:
+            best_profile = {"key": key, **profile}
+            best_score = score
+    return best_profile
+
+
+def _icon_profile_guidance(profile: Optional[Dict[str, Any]]) -> str:
+    if not profile:
+        return ""
+    visual = str(profile.get("visual") or "").strip()
+    if not visual:
+        return ""
+    title = str(profile.get("title") or profile.get("key") or "").strip()
+    if title:
+        return "Canonical visual reference for %s: %s." % (title, visual.rstrip("."))
+    return "Canonical visual reference: %s." % visual.rstrip(".")
+
+
+def _description_with_icon_profile(description: str, prompt: str, asset_type: str, style_target: str) -> str:
+    if _normalize_asset_type(asset_type) != "icon":
+        return description
+    profile = _icon_reference_profile(prompt, style_target)
+    guidance = _icon_profile_guidance(profile)
+    if not guidance:
+        return description
+    cleaned = str(description or "").strip().rstrip(".")
+    if not cleaned:
+        return guidance
+    return "%s. %s" % (cleaned, guidance)
 
 
 def _description_with_asset_constraints(asset_type: str, description: str) -> str:
@@ -770,33 +1604,46 @@ def _block_material_profile(plan: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     search_text = " ".join(
         str(part or "")
         for part in (
+            plan.get("user_prompt"),
             plan.get("description"),
             descriptions.get("primary"),
             descriptions.get("top"),
             descriptions.get("front"),
+            descriptions.get("side"),
             plan.get("filename_stub"),
         )
-    ).lower()
+    )
+    search_tokens = _reference_tokens(search_text)
+    best_profile: Optional[Dict[str, Any]] = None
+    best_score = 0
     for profile in BLOCK_MATERIAL_PROFILES.values():
-        if any(keyword in search_text for keyword in profile["keywords"]):
-            return profile
-    return None
+        match_all = profile.get("match_all") or ()
+        if match_all and not all(token in search_tokens for token in match_all):
+            continue
+        keyword_hits = [keyword for keyword in profile["keywords"] if keyword in search_tokens]
+        if not keyword_hits:
+            continue
+        score = len(keyword_hits)
+        if match_all:
+            score += 3
+        if score > best_score:
+            best_profile = profile
+            best_score = score
+    return best_profile
+
+
+def _block_profile_face_material(profile: Optional[Dict[str, Any]], face: str) -> str:
+    if not profile:
+        return ""
+    if _block_profile_is_uniform(profile):
+        shared_material = str(profile.get("material") or profile.get(face) or "").strip()
+        if shared_material:
+            return shared_material
+    return str(profile.get(face) or "").strip()
 
 
 def _block_face_user_prompt(plan: Dict[str, Any]) -> str:
-    user_prompt = str(plan.get("user_prompt") or "").strip()
-    if user_prompt:
-        return user_prompt
-
-    descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
-    primary_description = str(plan.get("description") or descriptions.get("primary") or "").strip()
-    reference_context = plan.get("reference_context") if isinstance(plan.get("reference_context"), dict) else None
-    suffix = _reference_prompt_suffix(reference_context)
-    if suffix and primary_description.endswith(suffix):
-        return primary_description[: -len(suffix)].rstrip(" .")
-    if "Reference image style traits to apply without copying source art verbatim:" in primary_description:
-        return primary_description.split("Reference image style traits to apply without copying source art verbatim:")[0].strip(" .")
-    return primary_description
+    return str(plan.get("user_prompt") or plan.get("description") or "").strip()
 
 
 def _block_face_match_clause(profile_key: str, face: str) -> str:
@@ -835,14 +1682,61 @@ def _block_face_match_clause(profile_key: str, face: str) -> str:
     if profile_key == "barren":
         if face == "top":
             return (
-                "Cross-face consistency: this cracked stone top must use the same gray-brown rocky palette as the "
-                "matching front face of this block. "
+                "Cross-face consistency: this stone top must use the exact same gray palette and pixel-noise "
+                "pattern as the front and side faces of this block. "
             )
         return (
-            "Cross-face consistency: this front face must use the same dusty gray-brown cracked stone palette as the "
-            "top face of this same block. "
+            "Cross-face consistency: this stone face must be visually identical to the top and other side faces "
+            "of the same block; same gray palette, same noise density, no warmer browns or different material. "
+        )
+    if profile_key == "metal":
+        return (
+            "Cross-face consistency: every face of this metal block must use the exact same requested metal palette "
+            "and pixel-noise pattern; gold stays yellow-gold, iron stays silver-gray, copper stays orange-copper, "
+            "with no grass, dirt, wood, stone, or rock material on any face. "
+        )
+    if profile_key == "gem":
+        return (
+            "Cross-face consistency: every face of this gem mineral block must use the exact same mineral palette "
+            "and pixel-noise pattern; no gem icon, jewel silhouette, item sprite, grass, dirt, wood, or stone on any face. "
+        )
+    if profile_key == "wood":
+        if face == "top":
+            return (
+                "Cross-face consistency: this log top must use the same brown and tan ring palette as the bark on "
+                "the front and side faces of this same wood block. "
+            )
+        return (
+            "Cross-face consistency: this bark face must use the same brown stripe palette and groove density as "
+            "the other bark face and must belong to the same oak log as the ring top face. No grass, dirt, or leaves. "
+        )
+    return (
+        "Cross-face consistency: every face of this block must use the exact same material palette and pixel-noise "
+        "pattern; no icons, items, loot sprites, grass, or unrelated materials on any face. "
+    )
+
+
+_BLOCK_ICON_TRIGGER_TOKENS = frozenset(
+    {"diamond", "emerald", "lapis", "gem", "jewel", "ruby", "sapphire", "amethyst", "quartz", "mineral"}
+)
+
+
+def _block_icon_guard_clause(user_prompt: str, profile_key: str) -> str:
+    tokens = _reference_tokens(user_prompt)
+    if profile_key == "gem" or tokens & _BLOCK_ICON_TRIGGER_TOKENS:
+        return (
+            "Do NOT draw a gem item icon, faceted jewel, loot sprite, inventory item, sword, tool, UI icon, "
+            "or cut-diamond illustration. Draw only flat square block material texture. "
         )
     return ""
+
+
+def _block_face_label(face: str) -> str:
+    if face == "top":
+        return "top horizontal face"
+    if face == "side":
+        return "side vertical face"
+    return "front vertical face"
 
 
 def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
@@ -884,36 +1778,113 @@ def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
     if profile_key == "barren":
         if face == "top":
             return (
-                "top horizontal face",
+                _block_face_label(face),
                 (
-                    "Read as cracked stone top surface only: dusty rubble, sparse dark fractures, desaturated rocky "
-                    "pixel texture. No vertical wall, no side material, no scene. "
+                    "Read as flat stone surface only: simple gray pixel noise, subtle darker specks, low contrast. "
+                    "No vertical wall, no side material, no cube preview, no scene. "
                 ),
             )
         return (
-            "front vertical face",
+            _block_face_label(face),
             (
-                "Read as cracked stone vertical wall only: jagged fissures, dusty sediment, muted gray and brown palette. "
-                "No grass, roots, sand, or separate top surface. "
+                "Read as flat stone wall only: simple gray pixel noise, subtle darker specks, low contrast. "
+                "Must be the same stone material as the top and other faces. "
+                "No grass, sand, dirt, brown brick, or separate top surface. "
+            ),
+        )
+    if profile_key == "forest":
+        if face == "top":
+            return (
+                _block_face_label(face),
+                (
+                    "Read as horizontal/top surface material only: mostly green grass, moss, rounded leaves, leafy clusters, "
+                    "tiny flowers, and dark gaps between foliage. "
+                    "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
+                ),
+            )
+        return (
+            _block_face_label(face),
+            (
+                "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
+                "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
+                "A very thin grass or moss lip is allowed only along the upper edge. "
+            ),
+        )
+    if profile_key == "metal":
+        if face == "top":
+            return (
+                _block_face_label(face),
+                (
+                    "Read as flat metal surface only using the user's requested metal palette. "
+                    "Iron or steel block: silver-gray with cool highlights, not yellow or gold. "
+                    "Gold block: bright yellow-gold with amber and pale-yellow pixel noise, not silver-gray. "
+                    "Copper block: warm orange-copper, not yellow or gray. "
+                    "No grass, dirt, ore crystals, rust patches, rock grain, or cube preview. "
+                ),
+            )
+        return (
+            _block_face_label(face),
+            (
+                "Read as flat metal wall only using the user's requested metal palette. "
+                "Iron or steel block: silver-gray with cool highlights, not yellow or gold. "
+                "Gold block: bright yellow-gold with amber and pale-yellow pixel noise, not silver-gray. "
+                "Copper block: warm orange-copper, not yellow or gray. "
+                "Must be the same metal material as the top and other faces. "
+                "No grass, dirt, stone, rock, wood, or separate top surface. "
+            ),
+        )
+    if profile_key == "gem":
+        if face == "top":
+            return (
+                _block_face_label(face),
+                (
+                    "Read as flat mineral block surface only: one tight cyan/green/blue palette with subtle pixel noise. "
+                    "No faceted gem icon, no jewel shape, no item sprite, no cube preview, no brown dirt. "
+                ),
+            )
+        return (
+            _block_face_label(face),
+            (
+                "Read as flat mineral block wall only: the same mineral palette and noise as the top and other faces. "
+                "No faceted gem icon, no jewel shape, no item sprite, no grass, dirt, stone, wood, or separate top surface. "
+            ),
+        )
+    if profile_key == "wood":
+        if face == "top":
+            return (
+                _block_face_label(face),
+                (
+                    "Read as log top/end grain only: circular wood growth rings, tan and brown bands. "
+                    "No grass, leaves, moss, dirt, stone, or cube preview. "
+                ),
+            )
+        return (
+            _block_face_label(face),
+            (
+                "Read as vertical log bark only: brown vertical stripes with darker grooves. "
+                "Must match the other bark face and the same log as the ring top face. "
+                "No grass, leaves, moss, dirt, stone, or separate top surface. "
             ),
         )
     if face == "top":
         return (
-            "top horizontal face",
+            _block_face_label(face),
             (
-                "Read as horizontal/top surface material only. For forest blocks this must be mostly green grass, moss, "
-                "rounded leaves, leafy clusters, tiny flowers, and dark gaps between foliage. "
-                "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
-                "Only include dirt as tiny surface specks if explicitly requested as a bare dirt top. "
+                "Read as one flat pixel-art material tile for the top face only. "
+                "Follow the user material request literally and keep the same material family on every face. "
+                "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
+                "or tile seams unless the user explicitly asked for brick or masonry. "
+                "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
             ),
         )
     return (
-        "front vertical face",
+        _block_face_label(face),
         (
-            "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
-            "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
-            "No grassy top surface, no top-down field, no horizontal ground tile, no cube outline. "
-            "A very thin grass or moss lip is allowed only along the upper edge. "
+            "Read as one flat pixel-art material tile for this side/front face only. "
+            "Follow the user material request literally and keep the same material family as the top face. "
+            "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
+            "or tile seams unless the user explicitly asked for brick or masonry. "
+            "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
         ),
     )
 
@@ -923,12 +1894,8 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     user_prompt = _block_face_user_prompt(plan)
     planned_face_description = str(descriptions.get(face) or "").strip()
     profile = _block_material_profile(plan)
-    profile_key = ""
-    for key, candidate in BLOCK_MATERIAL_PROFILES.items():
-        if profile is candidate:
-            profile_key = key
-            break
-    profile_face_description = str(profile.get(face, "")).strip() if profile else ""
+    profile_key = _block_profile_key(profile)
+    profile_face_description = _block_profile_face_material(profile, face)
     profile_title = str(profile.get("title", "")).strip() if profile else ""
     material_parts: List[str] = []
     if profile_face_description:
@@ -953,13 +1920,14 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
     match_part = _block_face_match_clause(profile_key, face)
     face_label, face_rules = _block_face_rules(profile_key, face)
+    icon_guard_part = _block_icon_guard_clause(user_prompt, profile_key)
 
     return (
         "Create a %sx%s seamless pixel art material texture tile. "
         "This is NOT an icon, NOT a cube drawing, and NOT a perspective object. "
         "Draw only the %s material for a game block. "
         "%s.%s "
-        "%s%s"
+        "%s%s%s"
         "Fill the entire canvas edge-to-edge with opaque material texture. "
         "Every pixel must be filled with solid material color; no transparency, no empty areas, no checkerboard, "
         "no gray cutout background, and no matte padding. "
@@ -973,6 +1941,7 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
         style_part,
         face_rules,
         match_part,
+        icon_guard_part,
     )
 
 
@@ -1121,18 +2090,22 @@ def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str
         return "spritesheet"
     if any(token in lowered for token in ("two-face", "two face", "top and front", "top/front", "block texture", "voxel block")):
         return "block_texture"
-    if "block" in lowered and any(token in lowered for token in ("texture", "tile", "stone", "dirt", "grass", "ore")):
+    if re.search(r"\bblock\b", lowered):
         return "block_texture"
-    if any(token in lowered for token in ("ground atlas", "terrain atlas", "tile atlas", "atlas", "tilemap", "ground tile", "floor tile")):
+    if any(token in lowered for token in ("ground atlas", "terrain atlas", "tile atlas", "atlas", "tilemap", "terrain", "ground tile", "floor tile")):
         return "ground_atlas"
-    if any(token in lowered for token in ("reference scene", "concept scene", "scene concept", "background", "environment concept")):
+    if any(token in lowered for token in (
+        "house", "building", "castle", "tower", "shop", "tavern", "hut", "cabin",
+        "village", "town", "structure", "fortress", "ruin", "ruins",
+        "reference scene", "concept scene", "scene concept", "background", "environment concept",
+    )):
         return "reference_scene"
     return "icon"
 
 
-def _default_workflow_for_asset_type(asset_type: str) -> str:
+def _default_workflow_for_asset_type(asset_type: str, style_target: str = "none") -> str:
     if asset_type == "block_texture":
-        return "block_texture_two_face"
+        return str(_block_texture_layout(style_target).get("workflow") or "block_texture_two_face")
     if asset_type == "ground_atlas":
         return "ground_atlas"
     if asset_type == "spritesheet":
@@ -1156,7 +2129,7 @@ def _parse_grid_config(prompt: str) -> Dict[str, int]:
     return {"columns": 4, "rows": 4}
 
 
-def _default_postprocess_config(prompt: str, asset_type: str) -> Dict[str, Any]:
+def _default_postprocess_config(prompt: str, asset_type: str, style_target: str = "none") -> Dict[str, Any]:
     lowered = prompt.lower()
     if asset_type == "ground_atlas":
         should_slice = any(token in lowered for token in ("slice", "crop", "split", "tileset cells", "individual tiles"))
@@ -1170,7 +2143,19 @@ def _default_postprocess_config(prompt: str, asset_type: str) -> Dict[str, Any]:
         return {"crop_cells": should_crop, "columns": grid["columns"], "rows": grid["rows"]}
 
     if asset_type == "block_texture":
-        return {"final_width": 32, "top_height": 16, "front_height": 32}
+        layout = _block_texture_layout(style_target)
+        return {
+            "compose_mode": layout.get("compose_mode", "vertical_strip"),
+            "final_width": layout["final_width"],
+            "top_height": layout["top_height"],
+            "front_height": layout["front_height"],
+            "side_height": layout.get("side_height", 0),
+            "output_width": layout.get("output_width", layout["final_width"]),
+            "output_height": layout.get(
+                "output_height",
+                layout["top_height"] + layout["front_height"] + int(layout.get("side_height") or 0),
+            ),
+        }
 
     return {}
 
@@ -1183,9 +2168,12 @@ def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, parsed))
 
 
-def _workflow_expected_outputs(asset_type: str, postprocess: Dict[str, Any]) -> List[str]:
+def _workflow_expected_outputs(asset_type: str, postprocess: Dict[str, Any], workflow: str = "") -> List[str]:
     if asset_type == "block_texture":
-        return ["block_texture", "top_face_source", "front_face_source"]
+        outputs = ["block_texture", "top_face_source", "front_face_source"]
+        if workflow == "block_texture_three_face" or int(postprocess.get("side_height") or 0) > 0:
+            outputs.append("side_face_source")
+        return outputs
     if asset_type == "ground_atlas":
         return ["full_image", "atlas_tiles"] if bool(postprocess.get("slice", False)) else ["full_image"]
     if asset_type == "spritesheet":
@@ -1210,21 +2198,57 @@ def _coerce_postprocess_config(asset_type: str, value: Any, fallback: Dict[str, 
         config["final_width"] = _clamp_size(config.get("final_width"), fallback.get("final_width", 32))
         config["top_height"] = _clamp_size(config.get("top_height"), fallback.get("top_height", 16))
         config["front_height"] = _clamp_size(config.get("front_height"), fallback.get("front_height", 32))
+        config["side_height"] = _clamp_size(config.get("side_height"), fallback.get("side_height", 0))
+        config["output_width"] = _clamp_size(config.get("output_width"), fallback.get("output_width", config["final_width"]))
+        config["output_height"] = _clamp_size(config.get("output_height"), fallback.get("output_height", config["front_height"]))
+        config["compose_mode"] = str(config.get("compose_mode") or fallback.get("compose_mode") or "vertical_strip")
     return config
 
 
-def _normalize_workflow(asset_type: str, workflow: str) -> str:
+def _finalize_block_texture_plan(
+    plan: Dict[str, Any],
+    style_target: str,
+    workflow_mode: str = "auto",
+) -> Dict[str, Any]:
+    if str(plan.get("asset_type") or "") != "block_texture":
+        return plan
+
+    layout = _block_texture_layout(style_target)
+    finalized = dict(plan)
+    postprocess = dict(finalized.get("postprocess") or {})
+    postprocess = _coerce_postprocess_config(
+        "block_texture",
+        postprocess,
+        _default_postprocess_config(
+            str(finalized.get("user_prompt") or finalized.get("description") or ""),
+            "block_texture",
+            style_target,
+        ),
+    )
+    if _normalize_workflow_mode(workflow_mode) == "auto":
+        finalized["workflow"] = str(layout.get("workflow") or finalized.get("workflow") or "block_texture_two_face")
+    finalized["postprocess"] = postprocess
+    finalized["outputs_expected"] = _workflow_expected_outputs(
+        "block_texture",
+        postprocess,
+        str(finalized.get("workflow") or ""),
+    )
+    return finalized
+
+
+def _normalize_workflow(asset_type: str, workflow: str, style_target: str = "none") -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(workflow or "").strip().lower()).strip("_")
     allowed = {
         "single_image",
         "ground_atlas",
         "spritesheet",
         "block_texture_two_face",
+        "block_texture_three_face",
         "reference_scene",
     }
     if normalized in allowed:
         return normalized
-    return _default_workflow_for_asset_type(asset_type)
+    return _default_workflow_for_asset_type(asset_type, style_target)
 
 
 def _fallback_generation_plan(
@@ -1251,13 +2275,11 @@ def _fallback_generation_plan(
     asset_spec = _asset_type_spec(normalized_asset_type)
     workflow = _normalize_workflow(
         normalized_asset_type,
-        workflow_mode if _normalize_workflow_mode(workflow_mode) != "auto" else _default_workflow_for_asset_type(normalized_asset_type),
+        workflow_mode if _normalize_workflow_mode(workflow_mode) != "auto" else _default_workflow_for_asset_type(normalized_asset_type, normalized_style),
+        normalized_style,
     )
-    postprocess = _default_postprocess_config(prompt, normalized_asset_type)
-    description = _description_with_reference_context(
-        _description_with_asset_constraints(normalized_asset_type, prompt),
-        reference_context,
-    )
+    postprocess = _default_postprocess_config(prompt, normalized_asset_type, normalized_style)
+    description = _enrich_description(prompt, prompt, normalized_asset_type, normalized_style, reference_context)
     notes = [note]
     if isinstance(reference_context, dict) and reference_context.get("failure"):
         notes.append("Reference image analysis unavailable: %s" % reference_context["failure"])
@@ -1280,7 +2302,7 @@ def _fallback_generation_plan(
         "style_context": style_context,
         "provider": normalized_provider,
         "postprocess": postprocess,
-        "outputs_expected": _workflow_expected_outputs(normalized_asset_type, postprocess),
+        "outputs_expected": _workflow_expected_outputs(normalized_asset_type, postprocess, workflow),
         "notes": notes,
         "planning_source": "fallback",
         "planning_note": note,
@@ -1288,7 +2310,7 @@ def _fallback_generation_plan(
     if reference_context:
         plan["reference_context"] = reference_context
         plan["reference_images"] = reference_context.get("reference_images", [])
-    return plan
+    return _finalize_block_texture_plan(plan, normalized_style, workflow_mode)
 
 
 def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
@@ -1309,23 +2331,19 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
     try:
         plan = _chat_json(
             (
-                "You are an expert technical artist and AI workflow planner for game asset generation. "
-                "Infer the best asset_type and workflow from the user's prompt unless the requested asset_type is not auto. "
-                "Supported asset types are icon, ground_atlas, spritesheet, block_texture, and reference_scene. "
-                "Supported workflows are single_image, ground_atlas, spritesheet, block_texture_two_face, and reference_scene. "
-                "For block_texture, prefer block_texture_two_face and provide separate top and front descriptions for two API calls. "
-                "For ground_atlas, create one single continuous full-image top-down terrain material texture swatch, not a composed scene. "
-                "For ground_atlas, the image model must render one unbroken image first; slicing/cropping is postprocess only when requested, never drawn by the model. "
-                "For ground_atlas, do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators. "
-                "If the user requests forest ground output with this asset type, produce a single continuous forest floor material texture swatch, not trees, paths, a tileset board, or a forest scene. "
-                "Only reference_scene may include composed scenes, backgrounds, camera views, horizons, or environment concept art. "
-                "For ground_atlas, save the full 128x128 image by default; set postprocess.slice true only when the user asks for sliced or cropped tiles. "
-                "For spritesheet, save the full sheet by default; set postprocess.crop_cells true only when the user asks for cropped cells. "
-                "Use the style_context only when a real style target is selected. If style_target is none, do not invent a game style. "
-                "When reference_context is present, use it as visual evidence for transferable style traits. Do not copy, trace, "
-                "or reproduce existing reference assets verbatim. "
+                "You plan a single pixel-art game asset for image generation. "
+                "Pick asset_type from {icon, block_texture, ground_atlas, spritesheet, reference_scene}:\n"
+                "- block_texture: a single block's face material (input has 'block' or a clear material name).\n"
+                "- reference_scene: any building/structure/environment (house, castle, tower, ruins, etc.).\n"
+                "- ground_atlas: continuous tileable terrain swatch.\n"
+                "- spritesheet: animation frames or grid of cells.\n"
+                "- icon: single inventory/UI item (default).\n"
+                "Use the corresponding workflow (single_image for icon, the block_texture_* for blocks, and so on). "
+                "Honour style_context when style_target is not 'none'; otherwise stay style-neutral. "
+                "If reference_context or icon_reference_profile is present, use them as anchors — don't trace them. "
                 "Return JSON with asset_type, workflow, provider, style_target, description, descriptions, width, height, "
-                "filename_stub, no_background, postprocess, outputs_expected, and notes. Width and height must be 16-400."
+                "filename_stub, no_background, postprocess, outputs_expected, notes. Width/height in [16, 400]. "
+                "Fallback plan is included; copy what's reasonable and override what's wrong."
             ),
             {
                 "user_prompt": request.prompt,
@@ -1336,6 +2354,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "target_game_style": normalized_style,
                 "style_context": fallback["style_context"],
                 "reference_context": fallback.get("reference_context"),
+                "icon_reference_profile": _icon_reference_profile(request.prompt, normalized_style),
                 "provider_constraints": _provider_constraints(normalized_provider),
                 "provider": normalized_provider,
                 "fallback": fallback,
@@ -1357,22 +2376,26 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         if reference_context and reference_context.get("failure"):
             fallback_notes.append("Reference image analysis unavailable: %s" % reference_context["failure"])
         fallback["notes"] = fallback_notes
-        return fallback
+        return _finalize_block_texture_plan(fallback, normalized_style, workflow_mode)
 
     planned_asset_type = _normalize_asset_type(plan.get("asset_type") if requested_asset_type == "auto" else requested_asset_type)
     default_dimensions = _default_generation_dimensions(planned_asset_type)
     fallback_dimensions = _parse_prompt_dimensions(request.prompt, default_dimensions["width"], default_dimensions["height"])
     asset_spec = _asset_type_spec(planned_asset_type)
-    workflow = _normalize_workflow(planned_asset_type, plan.get("workflow") or fallback["workflow"])
-    fallback_postprocess = _default_postprocess_config(request.prompt, planned_asset_type)
+    workflow = _normalize_workflow(planned_asset_type, plan.get("workflow") or fallback["workflow"], normalized_style)
+    fallback_postprocess = _default_postprocess_config(request.prompt, planned_asset_type, normalized_style)
     postprocess = _coerce_postprocess_config(planned_asset_type, plan.get("postprocess"), fallback_postprocess)
+    if planned_asset_type == "block_texture" and workflow_mode == "auto":
+        layout = _block_texture_layout(normalized_style)
+        workflow = str(layout.get("workflow") or workflow)
+        postprocess = _coerce_postprocess_config(planned_asset_type, postprocess, fallback_postprocess)
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
-    primary_description = _description_with_asset_constraints(
-        planned_asset_type,
-        str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip(),
-    )
+    raw_description = str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip()
     reference_context = fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None
-    primary_description = _description_with_reference_context(primary_description, reference_context)
+    fallback_asset_type = _normalize_asset_type(fallback.get("asset_type") or "icon")
+    if reference_context and planned_asset_type != fallback_asset_type:
+        reference_context = _build_reference_context(request.prompt, normalized_style, planned_asset_type)
+    primary_description = _enrich_description(raw_description, request.prompt, planned_asset_type, normalized_style, reference_context)
     notes = plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."]
     if reference_context and reference_context.get("failure"):
         notes = list(notes) + ["Reference image analysis unavailable: %s" % reference_context["failure"]]
@@ -1384,6 +2407,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
             "primary": primary_description,
             "top": str(descriptions.get("top") or "%s, top face only, seamless tile material" % primary_description).strip(),
             "front": str(descriptions.get("front") or "%s, front face only, vertical side material" % primary_description).strip(),
+            "side": str(descriptions.get("side") or "%s, side face only, vertical side material" % primary_description).strip(),
         },
         "width": _clamp_size(plan.get("width"), fallback_dimensions["width"]),
         "height": _clamp_size(plan.get("height"), fallback_dimensions["height"]),
@@ -1395,7 +2419,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         "style_context": fallback["style_context"],
         "provider": normalized_provider,
         "postprocess": postprocess,
-        "outputs_expected": plan.get("outputs_expected") if isinstance(plan.get("outputs_expected"), list) else _workflow_expected_outputs(planned_asset_type, postprocess),
+        "outputs_expected": plan.get("outputs_expected") if isinstance(plan.get("outputs_expected"), list) else _workflow_expected_outputs(planned_asset_type, postprocess, workflow),
         "notes": notes,
         "planning_source": "llm",
         "planning_note": "Used LLM-generated plan.",
@@ -1403,7 +2427,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
     if reference_context:
         resolved_plan["reference_context"] = reference_context
         resolved_plan["reference_images"] = reference_context.get("reference_images", [])
-    return resolved_plan
+    return _finalize_block_texture_plan(resolved_plan, normalized_style, workflow_mode)
 
 
 def _provider_rejection_fallback_plan(
@@ -1546,7 +2570,17 @@ def _generate_with_openai_image(description: str, width: int, height: int, no_ba
         json=payload,
         timeout=(10, 180),
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        status_code = response.status_code if response is not None else "unknown"
+        body = _response_text_excerpt(response)
+        detail = "OpenAI image API rejected image generation (%s)" % status_code
+        if body:
+            detail = "%s: %s" % (detail, body)
+        if status_code in {520, 502, 503, 504}:
+            detail = "%s. This is usually a temporary provider/proxy outage; retry or switch to PixelLab." % detail
+        raise requests.HTTPError(detail, response=response, request=response.request) from exc
 
     payload = response.json()
     data = payload.get("data") or []
@@ -1634,24 +2668,248 @@ def _slice_tile_outputs(image: Image.Image, target_folder: Path, filename_stub: 
     return outputs
 
 
+def _texture_flatten_fallback_rgb(image: Image.Image, default: Tuple[int, int, int] = (128, 128, 128)) -> Tuple[int, int, int]:
+    rgba = image.convert("RGBA")
+    opaque_pixels = [rgba.getpixel((x, y))[:3] for y in range(rgba.height) for x in range(rgba.width) if rgba.getpixel((x, y))[3] > 160]
+    if not opaque_pixels:
+        return default
+    opaque_pixels.sort(key=lambda rgb: (rgb[0], rgb[1], rgb[2]))
+    return opaque_pixels[len(opaque_pixels) // 2]
+
+
 def _flatten_opaque_texture(image: Image.Image, fallback_rgb: Tuple[int, int, int]) -> Image.Image:
     background = Image.new("RGBA", image.size, fallback_rgb + (255,))
     foreground = image.convert("RGBA")
     return Image.alpha_composite(background, foreground)
 
 
+def _warp_top_face_isometric(top_face: Image.Image, width: int, height: int) -> Image.Image:
+    source = top_face.resize((width, width), RESAMPLING.NEAREST)
+    inset = max(2, width // 4)
+    quad = (0, height, width, height, width - inset, 0, inset, 0)
+    transform = getattr(Image, "Transform", Image)
+    quad_mode = getattr(transform, "QUAD", getattr(Image, "QUAD", 0))
+    return source.transform((width, height), quad_mode, quad, RESAMPLING.NEAREST)
+
+
+def _paste_textured_parallelogram(
+    target: Image.Image,
+    source: Image.Image,
+    origin: Tuple[int, int],
+    x_axis: Tuple[int, int],
+    y_axis: Tuple[int, int],
+    shade: float = 1.0,
+) -> None:
+    source_rgba = source.convert("RGBA")
+    det = x_axis[0] * y_axis[1] - x_axis[1] * y_axis[0]
+    if det == 0:
+        return
+    points = (
+        origin,
+        (origin[0] + x_axis[0], origin[1] + x_axis[1]),
+        (origin[0] + x_axis[0] + y_axis[0], origin[1] + x_axis[1] + y_axis[1]),
+        (origin[0] + y_axis[0], origin[1] + y_axis[1]),
+    )
+    min_x = max(0, min(point[0] for point in points))
+    max_x = min(target.width - 1, max(point[0] for point in points))
+    min_y = max(0, min(point[1] for point in points))
+    max_y = min(target.height - 1, max(point[1] for point in points))
+    for y in range(min_y, max_y + 1):
+        for x in range(min_x, max_x + 1):
+            px = x + 0.5 - origin[0]
+            py = y + 0.5 - origin[1]
+            u = (px * y_axis[1] - py * y_axis[0]) / det
+            v = (x_axis[0] * py - x_axis[1] * px) / det
+            if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
+                continue
+            source_x = min(source_rgba.width - 1, max(0, int(u * source_rgba.width)))
+            source_y = min(source_rgba.height - 1, max(0, int(v * source_rgba.height)))
+            red, green, blue, alpha = source_rgba.getpixel((source_x, source_y))
+            if alpha == 0:
+                continue
+            if shade != 1.0:
+                red = max(0, min(255, int(red * shade)))
+                green = max(0, min(255, int(green * shade)))
+                blue = max(0, min(255, int(blue * shade)))
+            target.putpixel((x, y), (red, green, blue, alpha))
+
+
+def _compose_isometric_three_face_block(
+    top_bytes: bytes,
+    front_bytes: bytes,
+    side_bytes: bytes,
+    config: Dict[str, Any],
+) -> Image.Image:
+    face_size = int(config.get("final_width") or 16)
+    output_width = int(config.get("output_width") or face_size * 2)
+    output_height = int(config.get("output_height") or face_size * 2)
+    top_source = _png_image_from_bytes(top_bytes).resize((face_size, face_size), RESAMPLING.NEAREST)
+    front_source = _png_image_from_bytes(front_bytes).resize((face_size, face_size), RESAMPLING.NEAREST)
+    side_source = _png_image_from_bytes(side_bytes).resize((face_size, face_size), RESAMPLING.NEAREST)
+    top_face = _flatten_opaque_texture(top_source, _texture_flatten_fallback_rgb(top_source))
+    front_face = _flatten_opaque_texture(front_source, _texture_flatten_fallback_rgb(front_source))
+    side_face = _flatten_opaque_texture(side_source, _texture_flatten_fallback_rgb(side_source))
+
+    composed = Image.new("RGBA", (output_width, output_height), (0, 0, 0, 0))
+    half_width = max(1, output_width // 2)
+    top_y = max(0, (output_height - face_size * 2) // 2)
+    mid_y = top_y + max(1, face_size // 2)
+    center_x = output_width // 2
+    body_height = max(1, output_height - mid_y)
+
+    _paste_textured_parallelogram(
+        composed,
+        side_face,
+        (0, mid_y),
+        (center_x, face_size // 2),
+        (0, body_height - face_size // 2),
+        0.72,
+    )
+    _paste_textured_parallelogram(
+        composed,
+        front_face,
+        (center_x, mid_y + face_size // 2),
+        (half_width, -(face_size // 2)),
+        (0, body_height - face_size // 2),
+        0.86,
+    )
+    _paste_textured_parallelogram(
+        composed,
+        top_face,
+        (center_x, top_y),
+        (half_width, face_size // 2),
+        (-center_x, face_size // 2),
+        1.08,
+    )
+    return composed
+
+
+def _compose_three_face_block(
+    top_bytes: bytes,
+    front_bytes: bytes,
+    side_bytes: bytes,
+    config: Dict[str, Any],
+) -> Image.Image:
+    final_width = int(config.get("final_width") or 16)
+    top_height = int(config.get("top_height") or 16)
+    front_height = int(config.get("front_height") or 16)
+    side_height = int(config.get("side_height") or 16)
+    top_face = _flatten_opaque_texture(
+        _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST),
+        (120, 120, 120),
+    )
+    front_face = _flatten_opaque_texture(
+        _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST),
+        (110, 110, 110),
+    )
+    side_face = _flatten_opaque_texture(
+        _png_image_from_bytes(side_bytes).resize((final_width, side_height), RESAMPLING.NEAREST),
+        (110, 110, 110),
+    )
+    composed = Image.new("RGBA", (final_width, top_height + front_height + side_height), (0, 0, 0, 255))
+    composed.paste(top_face, (0, 0))
+    composed.paste(front_face, (0, top_height))
+    composed.paste(side_face, (0, top_height + front_height))
+    return composed
+
+
+def _generate_block_texture_faces(
+    plan: Dict[str, Any],
+    provider: str,
+    face_config: Dict[str, Any],
+    faces: List[str],
+) -> Dict[str, bytes]:
+    generated: Dict[str, bytes] = {}
+    if not _block_requires_multi_face_generation(plan) and faces:
+        lead_face = faces[0]
+        source_dimensions = _block_face_source_dimensions(
+            provider,
+            int(face_config["final_width"]),
+            int(face_config.get("%s_height" % lead_face) or face_config.get("front_height") or 16),
+        )
+        description = _strict_block_face_description(
+            plan,
+            lead_face,
+            source_dimensions["width"],
+            source_dimensions["height"],
+        )
+        material_bytes = _generate_with_provider(
+            provider=provider,
+            description=description,
+            width=source_dimensions["width"],
+            height=source_dimensions["height"],
+            no_background=False,
+        )
+        for face in faces:
+            generated[face] = material_bytes
+        return generated
+
+    for face in faces:
+        face_height = int(face_config.get("%s_height" % face) or face_config.get("front_height") or 16)
+        source_dimensions = _block_face_source_dimensions(provider, int(face_config["final_width"]), face_height)
+        generated[face] = _generate_with_provider(
+            provider=provider,
+            description=_strict_block_face_description(
+                plan,
+                face,
+                source_dimensions["width"],
+                source_dimensions["height"],
+            ),
+            width=source_dimensions["width"],
+            height=source_dimensions["height"],
+            no_background=False,
+        )
+    return generated
+
+
+def _save_block_texture_outputs(
+    composed: Image.Image,
+    face_config: Dict[str, Any],
+    target_folder: Path,
+    filename_stub: str,
+    faces: List[str],
+    face_bytes: Optional[Dict[str, bytes]] = None,
+) -> List[Dict[str, Any]]:
+    outputs: List[Dict[str, Any]] = []
+    final_width = int(face_config["final_width"])
+    face_paths: Dict[str, Path] = {}
+    compose_mode = str(face_config.get("compose_mode") or "vertical_strip")
+
+    if compose_mode == "isometric" and isinstance(face_bytes, dict):
+        for face in faces:
+            raw_bytes = face_bytes.get(face)
+            if not raw_bytes:
+                continue
+            face_path = target_folder / ("%s_%s.png" % (filename_stub, face))
+            _save_generated_png(raw_bytes, face_path)
+            face_paths[face] = face_path
+    else:
+        y_offset = 0
+        for face in faces:
+            face_height = int(face_config.get("%s_height" % face) or 0)
+            face_image = composed.crop((0, y_offset, final_width, y_offset + face_height))
+            face_path = target_folder / ("%s_%s.png" % (filename_stub, face))
+            _save_png(face_image, face_path)
+            face_paths[face] = face_path
+            y_offset += face_height
+
+    composed_path = target_folder / ("%s.png" % filename_stub)
+    _save_png(composed, composed_path)
+    _append_output(outputs, composed_path, "block_texture")
+    role_map = {"top": "top_face_source", "front": "front_face_source", "side": "side_face_source"}
+    for face in faces:
+        _append_output(outputs, face_paths[face], role_map.get(face, "%s_face_source" % face))
+    return outputs
+
+
 def _compose_two_face_block(top_bytes: bytes, front_bytes: bytes, config: Dict[str, Any]) -> Image.Image:
     final_width = int(config.get("final_width") or 32)
     top_height = int(config.get("top_height") or 16)
     front_height = int(config.get("front_height") or 32)
-    top_face = _flatten_opaque_texture(
-        _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST),
-        (34, 58, 38),
-    )
-    front_face = _flatten_opaque_texture(
-        _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST),
-        (74, 52, 34),
-    )
+    top_source = _png_image_from_bytes(top_bytes).resize((final_width, top_height), RESAMPLING.NEAREST)
+    front_source = _png_image_from_bytes(front_bytes).resize((final_width, front_height), RESAMPLING.NEAREST)
+    top_face = _flatten_opaque_texture(top_source, _texture_flatten_fallback_rgb(top_source))
+    front_face = _flatten_opaque_texture(front_source, _texture_flatten_fallback_rgb(front_source))
     composed = Image.new("RGBA", (final_width, top_height + front_height), (0, 0, 0, 255))
     composed.paste(top_face, (0, 0))
     composed.paste(front_face, (0, top_height))
@@ -1659,59 +2917,50 @@ def _compose_two_face_block(top_bytes: bytes, front_bytes: bytes, config: Dict[s
 
 
 def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> List[Dict[str, Any]]:
-    workflow = _normalize_workflow(plan["asset_type"], plan.get("workflow"))
+    workflow = _normalize_workflow(plan["asset_type"], plan.get("workflow"), str(plan.get("style_target") or "none"))
     provider = _normalize_generation_provider(plan.get("provider"))
     filename_stub = _safe_stem(str(plan.get("filename_stub") or "generated_asset"), "generated_asset")
     postprocess = plan.get("postprocess") if isinstance(plan.get("postprocess"), dict) else {}
     outputs: List[Dict[str, Any]] = []
 
-    if workflow == "block_texture_two_face":
-        final_width = _clamp_size(postprocess.get("final_width"), 32)
-        top_height = _clamp_size(postprocess.get("top_height"), 16)
-        front_height = _clamp_size(postprocess.get("front_height"), 32)
-        face_config = {"final_width": final_width, "top_height": top_height, "front_height": front_height}
-        top_source_dimensions = _block_face_source_dimensions(provider, final_width, top_height)
-        front_source_dimensions = _block_face_source_dimensions(provider, final_width, front_height)
-        top_description = _strict_block_face_description(
-            plan,
-            "top",
-            top_source_dimensions["width"],
-            top_source_dimensions["height"],
-        )
-        front_description = _strict_block_face_description(
-            plan,
-            "front",
-            front_source_dimensions["width"],
-            front_source_dimensions["height"],
-        )
-        top_bytes = _generate_with_provider(
-            provider=provider,
-            description=top_description,
-            width=top_source_dimensions["width"],
-            height=top_source_dimensions["height"],
-            no_background=False,
-        )
-        front_bytes = _generate_with_provider(
-            provider=provider,
-            description=front_description,
-            width=front_source_dimensions["width"],
-            height=front_source_dimensions["height"],
-            no_background=False,
-        )
-
-        top_path = target_folder / ("%s_top.png" % filename_stub)
-        front_path = target_folder / ("%s_front.png" % filename_stub)
-        composed_path = target_folder / ("%s.png" % filename_stub)
-        composed = _compose_two_face_block(top_bytes, front_bytes, face_config)
-        top_face = composed.crop((0, 0, final_width, top_height))
-        front_face = composed.crop((0, top_height, final_width, top_height + front_height))
-        _save_png(top_face, top_path)
-        _save_png(front_face, front_path)
-        _save_png(composed, composed_path)
-        _append_output(outputs, composed_path, "block_texture")
-        _append_output(outputs, top_path, "top_face_source")
-        _append_output(outputs, front_path, "front_face_source")
-        return outputs
+    if workflow in {"block_texture_two_face", "block_texture_three_face"}:
+        style_target = str(plan.get("style_target") or "none")
+        layout = _block_texture_layout(style_target)
+        final_width = _clamp_size(postprocess.get("final_width"), layout["final_width"])
+        top_height = _clamp_size(postprocess.get("top_height"), layout["top_height"])
+        front_height = _clamp_size(postprocess.get("front_height"), layout["front_height"])
+        side_height = _clamp_size(postprocess.get("side_height"), layout.get("side_height", 0))
+        face_config = {
+            "compose_mode": str(postprocess.get("compose_mode") or layout.get("compose_mode") or "vertical_strip"),
+            "final_width": final_width,
+            "top_height": top_height,
+            "front_height": front_height,
+            "side_height": side_height,
+            "output_width": _clamp_size(postprocess.get("output_width"), layout.get("output_width", final_width * 2)),
+            "output_height": _clamp_size(postprocess.get("output_height"), layout.get("output_height", top_height + front_height + side_height)),
+        }
+        if workflow == "block_texture_three_face":
+            faces = ["top", "front", "side"]
+            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces)
+            if face_config["compose_mode"] == "isometric":
+                composed = _compose_isometric_three_face_block(
+                    face_bytes["top"],
+                    face_bytes["front"],
+                    face_bytes["side"],
+                    face_config,
+                )
+            else:
+                composed = _compose_three_face_block(
+                    face_bytes["top"],
+                    face_bytes["front"],
+                    face_bytes["side"],
+                    face_config,
+                )
+        else:
+            faces = ["top", "front"]
+            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces)
+            composed = _compose_two_face_block(face_bytes["top"], face_bytes["front"], face_config)
+        return _save_block_texture_outputs(composed, face_config, target_folder, filename_stub, faces, face_bytes)
 
     image_bytes = _generate_with_provider(
         provider=provider,
@@ -2038,11 +3287,12 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
         )
         return _error(message, log_event_id=log_event_id, log_path=log_path)
 
+    requested_asset_type = _normalize_asset_type(request.asset_type, allow_auto=True)
+    style_target = _normalize_style_target(request.style_target)
+    provider = _normalize_generation_provider(request.provider)
+
     try:
         target_folder = _resolve_res_path(request.folder_path, expect_directory=True)
-        requested_asset_type = _normalize_asset_type(request.asset_type, allow_auto=True)
-        style_target = _normalize_style_target(request.style_target)
-        provider = _normalize_generation_provider(request.provider)
         metadata = dict(request.metadata or {})
         plan = _plan_generation_workflow(request)
         print(
@@ -2103,7 +3353,7 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
     except Exception as exc:
         print("Asset generation failed:", exc)
         if isinstance(exc, requests.HTTPError) and exc.response is not None:
-            print("PixelLab error body:", _response_text_excerpt(exc.response))
+            print("Provider error body:", _response_text_excerpt(exc.response))
         _record_generation_log_event(
             log_event_id,
             request,
@@ -2113,7 +3363,17 @@ async def generate_asset(request: GenerateAssetRequest) -> Dict[str, Any]:
             outputs=outputs,
             error=exc,
         )
-        return _error(str(exc), log_event_id=log_event_id, log_path=log_path)
+        return _error(
+            str(exc),
+            log_event_id=log_event_id,
+            log_path=log_path,
+            plan=plan if isinstance(plan, dict) else {},
+            workflow=plan.get("workflow") if isinstance(plan, dict) else None,
+            provider=plan.get("provider") if isinstance(plan, dict) else provider,
+            style_target=plan.get("style_target") if isinstance(plan, dict) else style_target,
+            asset_type=plan.get("asset_type") if isinstance(plan, dict) else requested_asset_type,
+            planning_source=plan.get("planning_source") if isinstance(plan, dict) else None,
+        )
 
 
 @app.post("/vibe/modify")

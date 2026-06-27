@@ -1,6 +1,22 @@
+"""Style benchmark / experiment runner.
+
+Not part of the live generation plugin. Kept for reference only.
+Depends on BENCHMARK_ITEMS / benchmark_item_dict / build_experiment_matrix
+which were removed from style_matrix.py; running this file as-is will fail
+on import. Restore those symbols (or stub them) if you want to re-enable
+the experiment harness.
+"""
 from __future__ import annotations
 
-import argparse
+import sys
+
+raise SystemExit(
+    "experiment.py is disabled in the live plugin build. "
+    "Restore BENCHMARK_ITEMS / benchmark_item_dict / build_experiment_matrix "
+    "in style_matrix.py to re-enable it."
+)
+
+import argparse  # noqa: E402  (kept below the guard for reference)
 import base64
 import binascii
 import io

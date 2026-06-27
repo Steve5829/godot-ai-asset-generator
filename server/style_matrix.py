@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Dict, List
+from typing import Dict
 
 
 @dataclass(frozen=True)
@@ -19,81 +19,113 @@ class StyleProfile:
     notes: str
 
 
-@dataclass(frozen=True)
-class BenchmarkItem:
-    key: str
-    title: str
-    category: str
-    description: str
-    visual_focus: str
-
-
 STYLE_MATRIX: Dict[str, StyleProfile] = {
     "core_keeper": StyleProfile(
         key="core_keeper",
         title="Core Keeper-like",
-        resolution="32x32 or 48x48",
-        perspective="top-down",
-        outlines="soft edge separation using darker local colors",
-        lighting="soft internal glow and compact shading",
-        palette="muted earthy tones with selective accent colors",
-        rendering="stylized pixel art",
-        detail_density="medium",
-        shape_language="chunky readable silhouettes with handcrafted texture clusters",
-        notes="Useful baseline for glowing minerals, tools, and underground loot drops.",
+        resolution="32x32 for items, 32x48 for two-face blocks (32x16 top + 32x32 front)",
+        perspective="top-down for ground/items, two-face orthographic for blocks (no isometric warp)",
+        outlines=(
+            "soft 1px edge separation using darker local color tones, never pure black outlines; "
+            "inner shapes separated by subtle color steps rather than hard line work"
+        ),
+        lighting=(
+            "soft top-left ambient light with gentle internal glow on minerals and ores; "
+            "shadows fall as muted teal-brown rather than pure black; emissive parts have a faint halo"
+        ),
+        palette=(
+            "muted earthy underground palette: warm browns, mossy greens, dusty grays, and tan stone; "
+            "accent colors are saturated jewel tones (cyan diamond, magenta scarlet, amber gold) "
+            "used sparingly against the desaturated base"
+        ),
+        rendering=(
+            "stylized handcrafted pixel art with visible texture clusters and small cell-shaded color regions; "
+            "no dithering, no anti-aliasing, no gradients"
+        ),
+        detail_density="medium — readable clusters of small shapes (leaves, ore specks, root knots, sand grains)",
+        shape_language=(
+            "chunky readable silhouettes with rounded corners; "
+            "items sit centered on transparent background with consistent ~2px padding; "
+            "blocks present a top face and a separate front face stacked vertically (NOT an isometric cube)"
+        ),
+        notes=(
+            "Core Keeper's signature look is underground biomes: forest (mossy green leaves on root walls), "
+            "desert (golden sand on layered sandstone), ocean (wet blue-green coral rock), and dirt walls. "
+            "Two-face block layout means the top tile and front tile are drawn flat side-by-side, then stacked."
+        ),
     ),
     "minecraft": StyleProfile(
         key="minecraft",
         title="Minecraft-like",
-        resolution="16x16",
-        perspective="front-facing icon view",
-        outlines="minimal or absent explicit outlines",
-        lighting="simple flat shading with low contrast",
-        palette="vibrant but limited, strong block-color readability",
-        rendering="simple pixel icon",
-        detail_density="low",
-        shape_language="blocky, geometric, low-frequency detail",
-        notes="Useful baseline for highly simplified items and low-detail silhouettes.",
+        resolution="16x16 for blocks and items; isometric block previews compose three 16x16 faces into 32x32",
+        perspective=(
+            "front-facing flat tile for individual block faces; "
+            "isometric ~30deg cube preview when showing top, front, and side together"
+        ),
+        outlines=(
+            "no explicit outlines — shapes are defined by adjacent color blocks; "
+            "items may have an implicit 1px darker border created by texture, not a drawn line"
+        ),
+        lighting=(
+            "flat unshaded pixel grid with at most 2-3 brightness steps per material; "
+            "top face is brightest, front face mid-tone, side face slightly darker; no specular highlights"
+        ),
+        palette=(
+            "small high-saturation per-material palette (typically 4-6 colors per block); "
+            "iron silver-gray, gold rich yellow, diamond bright cyan, redstone red, "
+            "dirt warm brown, stone neutral gray, grass top vivid green, nether deep red"
+        ),
+        rendering=(
+            "raw 16x16 pixel grid, no anti-aliasing, no smoothing, no dithering, no gradient ramps; "
+            "each pixel is a single solid color"
+        ),
+        detail_density="low — coarse noise patterns and a few accent pixels per face, never fine line art",
+        shape_language=(
+            "perfectly square tiles that tile seamlessly with themselves on all edges; "
+            "no object silhouette, no centered icon; the entire 16x16 is filled edge-to-edge with material"
+        ),
+        notes=(
+            "Minecraft blocks are seamless tileable 16x16 material textures. "
+            "Isometric block previews stack a 16x16 top diamond on top of left (front) and right (side) parallelograms. "
+            "Items keep the same 16x16 grid but show a centered silhouette."
+        ),
     ),
     "terraria": StyleProfile(
         key="terraria",
         title="Terraria-like",
-        resolution="16x16 or 32x32",
-        perspective="side-view",
-        outlines="strong dark outlines, often 1px-black-adjacent edges",
-        lighting="bright highlights with dithered or high-contrast shadow steps",
-        palette="bright and high-contrast",
-        rendering="stylized pixel art",
-        detail_density="medium-high",
-        shape_language="thin readable profiles with strong edge contrast",
-        notes="Useful baseline for weapons, potions, and combat-oriented pickups.",
+        resolution="16x16 for tiles, 32x32 or 40x40 for weapons and items",
+        perspective="side-view 2D platformer; items shown at a slight diagonal tilt; blocks tile horizontally",
+        outlines=(
+            "strong 1px dark-edge outlines, typically near-black or deep saturated brown/blue; "
+            "outlines are continuous and define the full item silhouette"
+        ),
+        lighting=(
+            "directional top-left light with bright highlight pixels and 2-3 step dithered shadow ramps; "
+            "metal items get a single white-pixel specular hit on the blade or edge"
+        ),
+        palette=(
+            "bright high-contrast palette with vivid saturation; "
+            "weapons use warm metallic gradients, potions use vibrant glass colors, tiles use natural earthy bases "
+            "with at least one bright accent tone"
+        ),
+        rendering=(
+            "stylized pixel art with controlled dithering on shadow transitions and on glow effects; "
+            "no anti-aliasing, no blurring"
+        ),
+        detail_density=(
+            "medium-high — readable per-pixel detail on weapon edges, gem facets, "
+            "potion liquid sloshes, and tile cracks"
+        ),
+        shape_language=(
+            "thin readable profiles for weapons (long blades, slim handles) with strong edge contrast; "
+            "blocks tile seamlessly on all sides with small natural variation specks"
+        ),
+        notes=(
+            "Terraria's signature look is high-contrast saturated colors on a black-outlined silhouette. "
+            "Weapons usually point up-right at ~45deg. Potions are clear glass vials with brightly colored liquid."
+        ),
     ),
 }
-
-
-BENCHMARK_ITEMS: List[BenchmarkItem] = [
-    BenchmarkItem(
-        key="iron_sword",
-        title="Iron Sword",
-        category="weapon",
-        description="A practical iron sword with a simple guard and readable metallic blade.",
-        visual_focus="Long silhouette, edge readability, and metal highlight control.",
-    ),
-    BenchmarkItem(
-        key="healing_potion",
-        title="Healing Potion",
-        category="consumable",
-        description="A small healing potion in a glass vial with vivid liquid inside.",
-        visual_focus="Container silhouette, liquid color separation, and glass readability.",
-    ),
-    BenchmarkItem(
-        key="crystal_ore",
-        title="Crystal Ore",
-        category="resource",
-        description="A crystal ore chunk with irregular geometry and visible internal glow.",
-        visual_focus="Glow handling, irregular silhouette, and clustered texture detail.",
-    ),
-]
 
 
 def style_profile_dict(style_key: str) -> Dict[str, str]:
@@ -101,36 +133,3 @@ def style_profile_dict(style_key: str) -> Dict[str, str]:
         raise KeyError(f"Unknown style profile: {style_key}")
     return asdict(STYLE_MATRIX[style_key])
 
-
-def benchmark_item_dict(item_key: str) -> Dict[str, str]:
-    item = next((entry for entry in BENCHMARK_ITEMS if entry.key == item_key), None)
-    if item is None:
-        raise KeyError(f"Unknown benchmark item: {item_key}")
-    return asdict(item)
-
-
-def build_prompt(item: BenchmarkItem, style: StyleProfile) -> str:
-    return (
-        f"{item.title}, {item.description} "
-        f"Pixel art asset, {style.resolution}, {style.perspective} perspective, "
-        f"{style.outlines}, {style.lighting}, {style.palette}, "
-        f"{style.rendering}, {style.detail_density} detail density, "
-        f"{style.shape_language}. "
-        f"Focus on {item.visual_focus}"
-    )
-
-
-def build_experiment_matrix() -> List[Dict[str, str]]:
-    rows: List[Dict[str, str]] = []
-    for item in BENCHMARK_ITEMS:
-        for style in STYLE_MATRIX.values():
-            rows.append(
-                {
-                    "item_key": item.key,
-                    "item_title": item.title,
-                    "style_key": style.key,
-                    "style_title": style.title,
-                    "prompt": build_prompt(item, style),
-                }
-            )
-    return rows

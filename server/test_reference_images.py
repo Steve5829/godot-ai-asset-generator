@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import requests
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +28,12 @@ class MockPixelLabResponse:
 def _write_reference_image(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGBA", (2, 2), (255, 0, 0, 255)).save(path)
+
+
+def _image_bytes(color) -> bytes:
+    buffer = BytesIO()
+    Image.new("RGBA", (16, 16), color).save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 class ReferenceImageTests(unittest.TestCase):
@@ -202,6 +209,197 @@ class ReferenceImageTests(unittest.TestCase):
         self.assertIn("internal server error (500) after 2 attempts", message)
         self.assertIn("provider-side generation failure", message)
         self.assertIn("GPT Image / openai_image provider", message)
+
+    def test_minecraft_stone_block_uses_three_face_layout(self) -> None:
+        plan = server._fallback_generation_plan(
+            "stone block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        self.assertEqual(plan["workflow"], "block_texture_three_face")
+        self.assertEqual(plan["postprocess"]["final_width"], 16)
+        self.assertEqual(plan["postprocess"]["top_height"], 16)
+        self.assertEqual(plan["postprocess"]["front_height"], 16)
+        self.assertEqual(plan["postprocess"]["side_height"], 16)
+        self.assertEqual(plan["postprocess"]["compose_mode"], "isometric")
+        self.assertEqual(plan["postprocess"]["output_width"], 32)
+        self.assertEqual(plan["postprocess"]["output_height"], 32)
+        profile = server._block_material_profile(plan)
+        self.assertTrue(server._block_profile_is_uniform(profile))
+
+    def test_iron_block_uses_metal_profile_uniform(self) -> None:
+        plan = server._fallback_generation_plan(
+            "iron block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        profile = server._block_material_profile(plan)
+        self.assertEqual(server._block_profile_key(profile), "metal")
+        self.assertTrue(server._block_profile_is_uniform(profile))
+        side_prompt = server._strict_block_face_description(plan, "side", 64, 64).lower()
+        self.assertIn("silver-gray", side_prompt)
+        self.assertNotIn("mossy green fringe", side_prompt)
+        self.assertNotIn("dirt, soil, roots", side_prompt)
+
+    def test_gold_block_uses_gold_metal_prompt_not_rock_or_silver(self) -> None:
+        plan = server._fallback_generation_plan(
+            "gold block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        profile = server._block_material_profile(plan)
+        self.assertEqual(server._block_profile_key(profile), "metal")
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertIn("for gold block, use yellow-gold", front_prompt)
+        self.assertIn("no gray rock", front_prompt)
+        self.assertNotIn("flat stone", front_prompt)
+
+    def test_unknown_block_defaults_to_shared_material_generation(self) -> None:
+        plan = server._fallback_generation_plan(
+            "obsidian block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        self.assertIsNone(server._block_material_profile(plan))
+        self.assertFalse(server._block_requires_multi_face_generation(plan))
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertIn("cross-face consistency", front_prompt)
+        self.assertIn("exact same material palette", front_prompt)
+
+        call_count = {"value": 0}
+
+        def _mock_generate(**kwargs):
+            call_count["value"] += 1
+            return b"\x89PNG\r\n\x1a\n"
+
+        face_config = {
+            "final_width": 16,
+            "front_height": 16,
+            "top_height": 16,
+            "side_height": 16,
+        }
+        with patch.object(server, "_generate_with_provider", side_effect=_mock_generate):
+            face_bytes = server._generate_block_texture_faces(plan, "pixellab", face_config, ["top", "front", "side"])
+
+        self.assertEqual(call_count["value"], 1)
+        self.assertEqual(face_bytes["top"], face_bytes["front"])
+        self.assertEqual(face_bytes["front"], face_bytes["side"])
+
+    def test_isometric_three_face_composition_connects_faces(self) -> None:
+        composed = server._compose_isometric_three_face_block(
+            _image_bytes((255, 220, 60, 255)),
+            _image_bytes((210, 160, 30, 255)),
+            _image_bytes((150, 110, 20, 255)),
+            {
+                "final_width": 16,
+                "output_width": 32,
+                "output_height": 32,
+            },
+        )
+        self.assertEqual(composed.size, (32, 32))
+        self.assertEqual(composed.getpixel((0, 0))[3], 0)
+        self.assertGreater(composed.getpixel((16, 1))[3], 0)
+        self.assertGreater(composed.getpixel((8, 16))[3], 0)
+        self.assertGreater(composed.getpixel((24, 16))[3], 0)
+        self.assertGreater(composed.getpixel((16, 31))[3], 0)
+
+    def test_grass_block_still_uses_multi_face_generation(self) -> None:
+        plan = server._fallback_generation_plan(
+            "grass block with leafy top and root front face",
+            "block_texture",
+            "auto",
+            "core_keeper",
+            "pixellab",
+            "test",
+        )
+        self.assertEqual(server._block_profile_key(server._block_material_profile(plan)), "forest")
+        self.assertTrue(server._block_requires_multi_face_generation(plan))
+
+        call_count = {"value": 0}
+
+        def _mock_generate(**kwargs):
+            call_count["value"] += 1
+            return b"\x89PNG\r\n\x1a\n"
+
+        face_config = {
+            "final_width": 32,
+            "front_height": 32,
+            "top_height": 16,
+        }
+        with patch.object(server, "_generate_with_provider", side_effect=_mock_generate):
+            server._generate_block_texture_faces(plan, "pixellab", face_config, ["top", "front"])
+
+        self.assertEqual(call_count["value"], 2)
+
+    def test_diamond_block_uses_gem_profile_uniform(self) -> None:
+        plan = server._fallback_generation_plan(
+            "diamond block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        profile = server._block_material_profile(plan)
+        self.assertEqual(server._block_profile_key(profile), "gem")
+        self.assertTrue(server._block_profile_is_uniform(profile))
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertIn("do not draw a gem item icon", front_prompt)
+        self.assertIn("flat mineral block", front_prompt)
+        self.assertIn("cross-face consistency", front_prompt)
+
+    def test_non_minecraft_block_prompt_does_not_inherit_minecraft_material_name(self) -> None:
+        plan = server._fallback_generation_plan(
+            "diamond block",
+            "block_texture",
+            "auto",
+            "core_keeper",
+            "pixellab",
+            "test",
+        )
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertNotIn("minecraft", front_prompt)
+        self.assertIn("core keeper-like", front_prompt)
+        self.assertIn("flat mineral block", front_prompt)
+
+    def test_wood_block_uses_wood_profile(self) -> None:
+        plan = server._fallback_generation_plan(
+            "wood block",
+            "block_texture",
+            "auto",
+            "minecraft",
+            "pixellab",
+            "test",
+        )
+        profile = server._block_material_profile(plan)
+        self.assertEqual(server._block_profile_key(profile), "wood")
+        front_prompt = server._strict_block_face_description(plan, "front", 64, 64).lower()
+        self.assertIn("bark", front_prompt)
+        self.assertNotIn("mossy green fringe", front_prompt)
+
+    def test_core_keeper_block_keeps_two_face_layout(self) -> None:
+        plan = server._fallback_generation_plan(
+            "stone block",
+            "block_texture",
+            "auto",
+            "core_keeper",
+            "pixellab",
+            "test",
+        )
+        self.assertEqual(plan["workflow"], "block_texture_two_face")
+        self.assertEqual(plan["postprocess"]["final_width"], 32)
 
     def test_block_texture_reference_ranking_prioritizes_material_match(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
