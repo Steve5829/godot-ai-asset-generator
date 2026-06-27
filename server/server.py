@@ -183,18 +183,6 @@ BLOCK_MATERIAL_PROFILES = {
             "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, "
             "simple repeatable stone grain; the exact same material on every block face"
         ),
-        "top": (
-            "flat gray pixel-art stone top surface with low-contrast pixel noise, subtle darker gray specks, "
-            "simple repeatable stone grain; identical to the other faces of this stone block"
-        ),
-        "front": (
-            "flat gray pixel-art stone vertical face with low-contrast pixel noise, subtle darker gray specks, "
-            "simple repeatable stone grain; identical to the other faces of this stone block"
-        ),
-        "side": (
-            "flat gray pixel-art stone side face with low-contrast pixel noise, subtle darker gray specks, "
-            "simple repeatable stone grain; identical to the other faces of this stone block"
-        ),
     },
     "gem": {
         "title": "Gem Mineral Block",
@@ -208,18 +196,6 @@ BLOCK_MATERIAL_PROFILES = {
             "identical flat block material on every face; "
             "NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration"
         ),
-        "top": (
-            "diamond mineral block top face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
-            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
-        ),
-        "front": (
-            "diamond mineral block front face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
-            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
-        ),
-        "side": (
-            "diamond mineral block side face with flat bright cyan pixel noise, subtle aqua and light-blue specks, "
-            "simple mineral texture; identical to the other faces; no gem icon, no jewel silhouette"
-        ),
     },
     "metal": {
         "title": "Metal Block",
@@ -232,21 +208,6 @@ BLOCK_MATERIAL_PROFILES = {
             "and every face must use the exact same metal material; no gray rock, no stone grain, "
             "no grass, no dirt, no ore crystals"
         ),
-        "top": (
-            "metal block top face using the user's requested metal color: gold means bright yellow-gold with amber "
-            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
-            "identical to the other faces"
-        ),
-        "front": (
-            "metal block front face using the user's requested metal color: gold means bright yellow-gold with amber "
-            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
-            "identical to the other faces"
-        ),
-        "side": (
-            "metal block side face using the user's requested metal color: gold means bright yellow-gold with amber "
-            "and pale-yellow specks; iron means silver-gray; copper means orange-copper; simple metal texture, "
-            "identical to the other faces"
-        ),
     },
     "obsidian": {
         "title": "Obsidian Block",
@@ -256,18 +217,6 @@ BLOCK_MATERIAL_PROFILES = {
             "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, "
             "tiny lighter purple specks scattered sparsely, smooth glassy not rocky, "
             "no grass, no stone grain, no brick grid, no mortar lines"
-        ),
-        "top": (
-            "obsidian block top face: very dark purple-black base with sparse violet pixel specks, "
-            "smooth volcanic glass texture, identical to other faces; no brick, no cracks, no grass"
-        ),
-        "front": (
-            "obsidian block front face: very dark purple-black base with sparse violet pixel specks, "
-            "smooth volcanic glass texture, identical to other faces; no brick grid, no mortar lines, no cobblestone"
-        ),
-        "side": (
-            "obsidian block side face: very dark purple-black base with sparse violet pixel specks, "
-            "smooth volcanic glass texture, identical to other faces; no brick grid, no mortar lines"
         ),
     },
     "ice": {
@@ -279,18 +228,6 @@ BLOCK_MATERIAL_PROFILES = {
             "tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, "
             "for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass"
         ),
-        "top": (
-            "ice/snow block top face: pale cyan-white base with tiny sparkle specks and soft blue shadow noise, "
-            "identical to other faces; no grass, no dirt, no brick"
-        ),
-        "front": (
-            "ice/snow block front face: pale cyan-white base with subtle frost cracks and soft blue shadow noise, "
-            "identical to other faces; no brick grid, no mortar, no dirt edge"
-        ),
-        "side": (
-            "ice/snow block side face: pale cyan-white base with subtle frost cracks and soft blue shadow noise, "
-            "identical to other faces; no brick grid, no mortar lines"
-        ),
     },
     "glass": {
         "title": "Glass Block",
@@ -300,18 +237,6 @@ BLOCK_MATERIAL_PROFILES = {
             "flat translucent glass block material with a 1px lighter rim on all four edges, "
             "very pale tint inside, sparse single-pixel highlights, mostly empty interior; "
             "no brick grid, no stone, no grass; the rim suggests a glass pane edge"
-        ),
-        "top": (
-            "glass block top face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
-            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
-        ),
-        "front": (
-            "glass block front face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
-            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
-        ),
-        "side": (
-            "glass block side face: pale tinted interior with a 1px lighter cyan-white rim along the outer edge, "
-            "1-2 sparkle highlight pixels, otherwise mostly empty; identical to other faces"
         ),
     },
     "brick": {
@@ -323,18 +248,6 @@ BLOCK_MATERIAL_PROFILES = {
             "thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of "
             "red, orange, or tan for natural variation; tileable seamlessly on all edges"
         ),
-        "top": (
-            "brick block top face: same red-orange brick rectangles and gray mortar grid as the other faces, "
-            "tileable; no grass, no dirt cap, no separate material on top"
-        ),
-        "front": (
-            "brick block front face: red-orange brick rectangles in a staggered row pattern with thin gray mortar, "
-            "natural brick-to-brick color variation; identical to other faces"
-        ),
-        "side": (
-            "brick block side face: red-orange brick rectangles in a staggered row pattern with thin gray mortar, "
-            "natural brick-to-brick color variation; identical to other faces"
-        ),
     },
     "nether": {
         "title": "Nether / Volcanic Block",
@@ -344,18 +257,6 @@ BLOCK_MATERIAL_PROFILES = {
             "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, "
             "small black pitted holes, ember-like bright pixels scattered sparsely; "
             "no gray stone, no brick grid, no grass, no water"
-        ),
-        "top": (
-            "nether block top face: deep maroon base with sparse orange ember specks and small black pits, "
-            "identical to other faces; no brick, no grass"
-        ),
-        "front": (
-            "nether block front face: deep maroon base with sparse orange ember specks and small black pits, "
-            "identical to other faces; no brick grid, no mortar, no separate top surface"
-        ),
-        "side": (
-            "nether block side face: deep maroon base with sparse orange ember specks and small black pits, "
-            "identical to other faces; no brick grid, no mortar lines"
         ),
     },
     "mushroom": {
@@ -367,18 +268,6 @@ BLOCK_MATERIAL_PROFILES = {
             "stem face has cream-white base with subtle vertical fiber lines; "
             "no grass, no dirt, no stone, no brick"
         ),
-        "top": (
-            "mushroom cap top face: bright red base with 4-6 round white spots, slight darker red shadow noise, "
-            "no grass, no stem texture"
-        ),
-        "front": (
-            "mushroom stem front face: cream-white base with subtle vertical fiber lines and pale tan shadow noise, "
-            "no grass, no dirt"
-        ),
-        "side": (
-            "mushroom stem side face: cream-white base with subtle vertical fiber lines and pale tan shadow noise, "
-            "no grass, no dirt"
-        ),
     },
     "dirt": {
         "title": "Plain Dirt Block",
@@ -388,18 +277,6 @@ BLOCK_MATERIAL_PROFILES = {
             "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, "
             "tiny lighter tan pebble pixels, small black holes; "
             "no grass top, no roots, no stone, no brick"
-        ),
-        "top": (
-            "dirt block top face: warm brown base with darker shadow specks and small lighter pebbles, "
-            "identical to other faces; no grass cap, no roots"
-        ),
-        "front": (
-            "dirt block front face: warm brown base with darker shadow specks and small lighter pebbles, "
-            "identical to other faces; no roots, no brick grid, no separate top surface"
-        ),
-        "side": (
-            "dirt block side face: warm brown base with darker shadow specks and small lighter pebbles, "
-            "identical to other faces; no roots, no brick grid"
         ),
     },
     "wood": {
@@ -426,9 +303,6 @@ BLOCK_MATERIAL_PROFILES = {
             "smooth warm orange-brown ceramic block with low-contrast pixel noise, "
             "subtle darker terracotta speck variations, no cracks; identical on every face"
         ),
-        "top": "terracotta top face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick grid",
-        "front": "terracotta front face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick, no mortar",
-        "side": "terracotta side face: warm orange-brown smooth ceramic with subtle pixel noise, identical to other faces; no brick, no mortar",
     },
     "end_stone": {
         "title": "End Stone Block",
@@ -439,9 +313,6 @@ BLOCK_MATERIAL_PROFILES = {
             "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, "
             "alien smooth texture; no grass, no brick"
         ),
-        "top": "end stone top face: pale yellow-tan rocky surface with cream highlights, small darker pits; identical to other faces",
-        "front": "end stone front face: pale yellow-tan rocky wall with cream highlights, small darker pits; identical to other faces",
-        "side": "end stone side face: pale yellow-tan rocky wall with cream highlights, small darker pits; identical to other faces",
     },
     "prismarine": {
         "title": "Prismarine Block",
@@ -451,9 +322,6 @@ BLOCK_MATERIAL_PROFILES = {
             "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker "
             "teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass"
         ),
-        "top": "prismarine top face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
-        "front": "prismarine front face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
-        "side": "prismarine side face: teal-green base with lighter cyan and darker teal diagonal lattice; identical to other faces",
     },
     "basalt": {
         "title": "Basalt Block",
@@ -463,9 +331,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, "
             "subtle warmer brown speck noise; no brick grid, no mortar"
         ),
-        "top": "basalt top face: dark gray hexagonal column ends with near-black grooves between cells; identical to other faces",
-        "front": "basalt front face: dark gray vertical column striations with near-black grooves; identical to other faces",
-        "side": "basalt side face: dark gray vertical column striations with near-black grooves; identical to other faces",
     },
     "calcite": {
         "title": "Calcite Block",
@@ -475,9 +340,6 @@ BLOCK_MATERIAL_PROFILES = {
             "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; "
             "no brick, no grass, no cracks"
         ),
-        "top": "calcite top face: pale off-white with subtle gray noise; identical to other faces",
-        "front": "calcite front face: pale off-white with subtle gray noise; identical to other faces",
-        "side": "calcite side face: pale off-white with subtle gray noise; identical to other faces",
     },
     "soul_sand": {
         "title": "Soul Sand Block",
@@ -488,9 +350,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; "
             "no brick, no grass"
         ),
-        "top": "soul sand top face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
-        "front": "soul sand front face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
-        "side": "soul sand side face: dark brown grainy sand with faint pale ghostly face impressions; identical to other faces",
     },
     "coal_block": {
         "title": "Coal Block",
@@ -500,9 +359,6 @@ BLOCK_MATERIAL_PROFILES = {
             "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, "
             "smooth dense look; no brick, no grass"
         ),
-        "top": "coal block top face: near-black base with subtle dark-gray specks; identical to other faces",
-        "front": "coal block front face: near-black base with subtle dark-gray specks; identical to other faces",
-        "side": "coal block side face: near-black base with subtle dark-gray specks; identical to other faces",
     },
     "glowstone": {
         "title": "Glowstone Block",
@@ -512,9 +368,6 @@ BLOCK_MATERIAL_PROFILES = {
             "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, "
             "soft inner glow halo; no brick, no grass"
         ),
-        "top": "glowstone top face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
-        "front": "glowstone front face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
-        "side": "glowstone side face: warm yellow-orange base with bright yellow speck clusters and inner glow; identical to other faces",
     },
     "redstone_block": {
         "title": "Redstone Block",
@@ -525,9 +378,6 @@ BLOCK_MATERIAL_PROFILES = {
             "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, "
             "faint pinkish circuit-dust scatter; no brick, no grass"
         ),
-        "top": "redstone block top face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
-        "front": "redstone block front face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
-        "side": "redstone block side face: vivid red base with darker red specks and tiny bright highlights; identical to other faces",
     },
     "bone_block": {
         "title": "Bone Block",
@@ -538,9 +388,6 @@ BLOCK_MATERIAL_PROFILES = {
             "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, "
             "subtle pale gray shadow noise; no brick, no grass"
         ),
-        "top": "bone block top face: cream-white surface with two or three small dark hollow circles, like cross-section of bones; identical to other faces",
-        "front": "bone block front face: cream-white surface with thin vertical dark gray hollow lines; identical to other faces",
-        "side": "bone block side face: cream-white surface with thin vertical dark gray hollow lines; identical to other faces",
     },
     "wool": {
         "title": "Wool / Cloth Block",
@@ -551,9 +398,6 @@ BLOCK_MATERIAL_PROFILES = {
             "(color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); "
             "soft texture, no brick, no grass"
         ),
-        "top": "wool top face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
-        "front": "wool front face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
-        "side": "wool side face: soft fluffy fabric in the requested color with subtle puff highlights; identical to other faces",
     },
     "hay_bale": {
         "title": "Hay Bale Block",
@@ -579,9 +423,6 @@ BLOCK_MATERIAL_PROFILES = {
             "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, "
             "single highlight pixels in each cell suggesting honey; no brick, no grass"
         ),
-        "top": "honeycomb top face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
-        "front": "honeycomb front face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
-        "side": "honeycomb side face: golden-yellow base with darker amber hexagonal cell grid and small highlights; identical to other faces",
     },
     "slime_block": {
         "title": "Slime Block",
@@ -591,9 +432,6 @@ BLOCK_MATERIAL_PROFILES = {
             "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs "
             "suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass"
         ),
-        "top": "slime block top face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
-        "front": "slime block front face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
-        "side": "slime block side face: translucent lime-green with a lighter rim and white highlight blobs; identical to other faces",
     },
     "cactus": {
         "title": "Cactus Block",
@@ -603,9 +441,6 @@ BLOCK_MATERIAL_PROFILES = {
             "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots "
             "scattered, slightly paler green highlights; no brick, no grass"
         ),
-        "top": "cactus top face: medium green base with darker concentric ring and small spine dots in the center; identical to other faces",
-        "front": "cactus front face: medium green base with vertical darker ridges and small white spine dots; identical to other faces",
-        "side": "cactus side face: medium green base with vertical darker ridges and small white spine dots; identical to other faces",
     },
     "moss_block": {
         "title": "Moss Block",
@@ -616,9 +451,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow "
             "highlight specks, organic clumpy texture; no leaves, no dirt, no roots"
         ),
-        "top": "moss block top face: bright moss-green base with darker clusters and lime specks; identical to other faces",
-        "front": "moss block front face: bright moss-green base with darker clusters and lime specks; identical to other faces",
-        "side": "moss block side face: bright moss-green base with darker clusters and lime specks; identical to other faces",
     },
     "leaves_block": {
         "title": "Leaves Block",
@@ -629,9 +461,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded "
             "leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood"
         ),
-        "top": "leaves block top face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
-        "front": "leaves block front face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
-        "side": "leaves block side face: dense rounded green leaf clusters with darker shadow gaps; identical to other faces",
     },
     "pumpkin": {
         "title": "Pumpkin Block",
@@ -690,9 +519,6 @@ BLOCK_MATERIAL_PROFILES = {
             "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, "
             "tiny white-hot ember specks; intense inner glow; no brick, no grass"
         ),
-        "top": "lava top face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
-        "front": "lava front face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
-        "side": "lava side face: molten orange-red with yellow flow blobs and ember specks; identical to other faces",
     },
     # Terraria evil biomes
     "ebonstone": {
@@ -703,9 +529,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, "
             "ominous shadow gaps; no brick, no grass"
         ),
-        "top": "ebonstone top face: dark purple-black corrupted stone with violet cracks; identical to other faces",
-        "front": "ebonstone front face: dark purple-black corrupted stone with violet cracks; identical to other faces",
-        "side": "ebonstone side face: dark purple-black corrupted stone with violet cracks; identical to other faces",
     },
     "crimstone": {
         "title": "Crimstone Block (Crimson)",
@@ -715,9 +538,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red "
             "specks; organic ominous look; no brick, no grass"
         ),
-        "top": "crimstone top face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
-        "front": "crimstone front face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
-        "side": "crimstone side face: dark blood-red flesh stone with deeper maroon cracks and red veins; identical to other faces",
     },
     "pearlstone": {
         "title": "Pearlstone Block (Hallow)",
@@ -727,9 +547,6 @@ BLOCK_MATERIAL_PROFILES = {
             "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, "
             "magical pure look; no brick, no grass"
         ),
-        "top": "pearlstone top face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
-        "front": "pearlstone front face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
-        "side": "pearlstone side face: pale pink-white stone with cyan/magenta sparkle specks; identical to other faces",
     },
     "hellstone": {
         "title": "Hellstone Block",
@@ -740,9 +557,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, "
             "tiny ember specks; intense underworld look; no brick, no grass"
         ),
-        "top": "hellstone top face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
-        "front": "hellstone front face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
-        "side": "hellstone side face: dark gray rock with glowing orange-red lava cracks; identical to other faces",
     },
     # Core Keeper biomes
     "larva_floor": {
@@ -754,9 +568,6 @@ BLOCK_MATERIAL_PROFILES = {
             "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, "
             "soft top-down shading; no brick, no grass, no dirt"
         ),
-        "top": "larva block top face: warm orange squishy surface with darker fold shadows and cream specks; identical to other faces",
-        "front": "larva block front face: warm orange squishy wall with darker fold shadows and cream specks; identical to other faces",
-        "side": "larva block side face: warm orange squishy wall with darker fold shadows and cream specks; identical to other faces",
     },
     "azeos_floor": {
         "title": "Azeos Ground (Core Keeper)",
@@ -766,9 +577,6 @@ BLOCK_MATERIAL_PROFILES = {
             "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island "
             "look; muted earthy palette; no brick, no grass"
         ),
-        "top": "azeos block top face: pale mint-green stone with darker teal specks; identical to other faces",
-        "front": "azeos block front face: pale mint-green stone with darker teal specks; identical to other faces",
-        "side": "azeos block side face: pale mint-green stone with darker teal specks; identical to other faces",
     },
     "shimmering_stone": {
         "title": "Shimmering Stone (Core Keeper)",
@@ -779,9 +587,6 @@ BLOCK_MATERIAL_PROFILES = {
             "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, "
             "magical underground look; no brick, no grass"
         ),
-        "top": "shimmering stone top face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
-        "front": "shimmering stone front face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
-        "side": "shimmering stone side face: dark gray stone with scattered cyan and white sparkle specks; identical to other faces",
     },
 }
 
@@ -1679,27 +1484,6 @@ def _block_face_match_clause(profile_key: str, face: str) -> str:
             "Cross-face consistency: this front face must use the same damp blue-green rock and algae palette as the "
             "top face of this same block. "
         )
-    if profile_key == "barren":
-        if face == "top":
-            return (
-                "Cross-face consistency: this stone top must use the exact same gray palette and pixel-noise "
-                "pattern as the front and side faces of this block. "
-            )
-        return (
-            "Cross-face consistency: this stone face must be visually identical to the top and other side faces "
-            "of the same block; same gray palette, same noise density, no warmer browns or different material. "
-        )
-    if profile_key == "metal":
-        return (
-            "Cross-face consistency: every face of this metal block must use the exact same requested metal palette "
-            "and pixel-noise pattern; gold stays yellow-gold, iron stays silver-gray, copper stays orange-copper, "
-            "with no grass, dirt, wood, stone, or rock material on any face. "
-        )
-    if profile_key == "gem":
-        return (
-            "Cross-face consistency: every face of this gem mineral block must use the exact same mineral palette "
-            "and pixel-noise pattern; no gem icon, jewel silhouette, item sprite, grass, dirt, wood, or stone on any face. "
-        )
     if profile_key == "wood":
         if face == "top":
             return (
@@ -1775,23 +1559,6 @@ def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
                 "mineral texture. No sandy beach, no grass, no separate top surface. "
             ),
         )
-    if profile_key == "barren":
-        if face == "top":
-            return (
-                _block_face_label(face),
-                (
-                    "Read as flat stone surface only: simple gray pixel noise, subtle darker specks, low contrast. "
-                    "No vertical wall, no side material, no cube preview, no scene. "
-                ),
-            )
-        return (
-            _block_face_label(face),
-            (
-                "Read as flat stone wall only: simple gray pixel noise, subtle darker specks, low contrast. "
-                "Must be the same stone material as the top and other faces. "
-                "No grass, sand, dirt, brown brick, or separate top surface. "
-            ),
-        )
     if profile_key == "forest":
         if face == "top":
             return (
@@ -1808,45 +1575,6 @@ def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
                 "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
                 "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
                 "A very thin grass or moss lip is allowed only along the upper edge. "
-            ),
-        )
-    if profile_key == "metal":
-        if face == "top":
-            return (
-                _block_face_label(face),
-                (
-                    "Read as flat metal surface only using the user's requested metal palette. "
-                    "Iron or steel block: silver-gray with cool highlights, not yellow or gold. "
-                    "Gold block: bright yellow-gold with amber and pale-yellow pixel noise, not silver-gray. "
-                    "Copper block: warm orange-copper, not yellow or gray. "
-                    "No grass, dirt, ore crystals, rust patches, rock grain, or cube preview. "
-                ),
-            )
-        return (
-            _block_face_label(face),
-            (
-                "Read as flat metal wall only using the user's requested metal palette. "
-                "Iron or steel block: silver-gray with cool highlights, not yellow or gold. "
-                "Gold block: bright yellow-gold with amber and pale-yellow pixel noise, not silver-gray. "
-                "Copper block: warm orange-copper, not yellow or gray. "
-                "Must be the same metal material as the top and other faces. "
-                "No grass, dirt, stone, rock, wood, or separate top surface. "
-            ),
-        )
-    if profile_key == "gem":
-        if face == "top":
-            return (
-                _block_face_label(face),
-                (
-                    "Read as flat mineral block surface only: one tight cyan/green/blue palette with subtle pixel noise. "
-                    "No faceted gem icon, no jewel shape, no item sprite, no cube preview, no brown dirt. "
-                ),
-            )
-        return (
-            _block_face_label(face),
-            (
-                "Read as flat mineral block wall only: the same mineral palette and noise as the top and other faces. "
-                "No faceted gem icon, no jewel shape, no item sprite, no grass, dirt, stone, wood, or separate top surface. "
             ),
         )
     if profile_key == "wood":
