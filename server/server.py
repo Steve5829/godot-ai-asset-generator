@@ -158,6 +158,29 @@ BLOCK_MATERIAL_PROFILES = {
             "rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe "
             "along the upper seam; root lattice texture, not plain dirt"
         ),
+        "face_rules": {
+            "top": (
+                "Read as horizontal/top surface material only: mostly green grass, moss, rounded leaves, leafy clusters, "
+                "tiny flowers, and dark gaps between foliage. "
+                "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
+            ),
+            "front": (
+                "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
+                "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
+                "A very thin grass or moss lip is allowed only along the upper edge. "
+            ),
+        },
+        "face_match": {
+            "top": (
+                "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, "
+                "moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the "
+                "matching front face of this block. "
+            ),
+            "front": (
+                "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same "
+                "green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
+            ),
+        },
     },
     "desert": {
         "title": "Desert Sandstone Block",
@@ -168,12 +191,56 @@ BLOCK_MATERIAL_PROFILES = {
             "warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, "
             "not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks"
         ),
+        "face_rules": {
+            "top": (
+                "Read as horizontal sand surface only: wind-shaped grains, pale gold and tan clusters, tiny pebble "
+                "specks, sparse cracked dry patterns. Do not draw brick, masonry, vertical walls, side material, "
+                "or cube sides. "
+            ),
+            "front": (
+                "Read as vertical sand/sandstone wall only: compacted sediment strata, grainy sand pockets, warm tan "
+                "and gold erosion marks. Must remain the same sand block material family as the top face. "
+                "Do not draw brick grids, red clay bricks, masonry blocks, cobblestone rectangles, grass, roots, "
+                "or a separate top surface. "
+            ),
+        },
+        "face_match": {
+            "top": (
+                "Cross-face consistency: this sand top must use the same warm tan, gold, and pale beige grain colors "
+                "as the sand/sandstone material on the matching front face of this block. "
+            ),
+            "front": (
+                "Cross-face consistency: this front face must stay in the same sand/sandstone material family as the top "
+                "face, using matching tan and gold palette; the upper edge should read as compacted sand from the same "
+                "block, not a different material like brick or masonry. "
+            ),
+        },
     },
     "ocean": {
         "title": "Ocean Coral Rock Block",
         "keywords": ("ocean", "coral", "sea", "algae", "water", "underwater"),
         "top": "wet blue-green coral rock top with tiny coral specks, seaweed flecks, cool turquoise highlights, damp uneven surface",
         "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture",
+        "face_rules": {
+            "top": (
+                "Read as wet rock/coral top surface only: tiny coral specks, seaweed flecks, turquoise highlights, "
+                "damp uneven mineral texture. No vertical wall, no side material, no scene. "
+            ),
+            "front": (
+                "Read as wet rock vertical wall only: algae streaks, barnacle-like dots, blue-green shadows, underwater "
+                "mineral texture. No sandy beach, no grass, no separate top surface. "
+            ),
+        },
+        "face_match": {
+            "top": (
+                "Cross-face consistency: this wet rock/coral top must use the same blue-green mineral palette as the "
+                "matching front face of this block. "
+            ),
+            "front": (
+                "Cross-face consistency: this front face must use the same damp blue-green rock and algae palette as the "
+                "top face of this same block. "
+            ),
+        },
     },
     "barren": {
         "title": "Stone Block",
@@ -188,6 +255,7 @@ BLOCK_MATERIAL_PROFILES = {
         "title": "Gem Mineral Block",
         "keywords": ("diamond", "emerald", "lapis", "quartz", "amethyst", "ruby", "sapphire", "gem", "mineral"),
         "uniform": True,
+        "icon_guard": True,
         "material": (
             "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; "
             "for diamond block use light cyan and aqua blue specks on a bright cyan base; "
@@ -294,6 +362,27 @@ BLOCK_MATERIAL_PROFILES = {
             "oak log bark side face with the same vertical brown stripe pattern and palette as the front face, "
             "simple flat pixel texture, no grass, no dirt, and no leaves"
         ),
+        "face_rules": {
+            "top": (
+                "Read as log top/end grain only: circular wood growth rings, tan and brown bands. "
+                "No grass, leaves, moss, dirt, stone, or cube preview. "
+            ),
+            "front": (
+                "Read as vertical log bark only: brown vertical stripes with darker grooves. "
+                "Must match the other bark face and the same log as the ring top face. "
+                "No grass, leaves, moss, dirt, stone, or separate top surface. "
+            ),
+        },
+        "face_match": {
+            "top": (
+                "Cross-face consistency: this log top must use the same brown and tan ring palette as the bark on "
+                "the front and side faces of this same wood block. "
+            ),
+            "front": (
+                "Cross-face consistency: this bark face must use the same brown stripe palette and groove density as "
+                "the other bark face and must belong to the same oak log as the ring top face. No grass, dirt, or leaves. "
+            ),
+        },
     },
     "clay": {
         "title": "Clay / Terracotta Block",
@@ -1451,53 +1540,26 @@ def _block_face_user_prompt(plan: Dict[str, Any]) -> str:
     return str(plan.get("user_prompt") or plan.get("description") or "").strip()
 
 
-def _block_face_match_clause(profile_key: str, face: str) -> str:
-    if profile_key == "forest":
-        if face == "top":
-            return (
-                "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, "
-                "moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the "
-                "matching front face of this block. "
-            )
-        return (
-            "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same "
-            "green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
-        )
-    if profile_key == "desert":
-        if face == "top":
-            return (
-                "Cross-face consistency: this sand top must use the same warm tan, gold, and pale beige grain colors "
-                "as the sand/sandstone material on the matching front face of this block. "
-            )
-        return (
-            "Cross-face consistency: this front face must stay in the same sand/sandstone material family as the top "
-            "face, using matching tan and gold palette; the upper edge should read as compacted sand from the same "
-            "block, not a different material like brick or masonry. "
-        )
-    if profile_key == "ocean":
-        if face == "top":
-            return (
-                "Cross-face consistency: this wet rock/coral top must use the same blue-green mineral palette as the "
-                "matching front face of this block. "
-            )
-        return (
-            "Cross-face consistency: this front face must use the same damp blue-green rock and algae palette as the "
-            "top face of this same block. "
-        )
-    if profile_key == "wood":
-        if face == "top":
-            return (
-                "Cross-face consistency: this log top must use the same brown and tan ring palette as the bark on "
-                "the front and side faces of this same wood block. "
-            )
-        return (
-            "Cross-face consistency: this bark face must use the same brown stripe palette and groove density as "
-            "the other bark face and must belong to the same oak log as the ring top face. No grass, dirt, or leaves. "
-        )
-    return (
-        "Cross-face consistency: every face of this block must use the exact same material palette and pixel-noise "
-        "pattern; no icons, items, loot sprites, grass, or unrelated materials on any face. "
-    )
+_GENERIC_FACE_MATCH_CLAUSE = (
+    "Cross-face consistency: every face of this block must use the exact same material palette and pixel-noise "
+    "pattern; no icons, items, loot sprites, grass, or unrelated materials on any face. "
+)
+
+
+def _face_table_lookup(table: Dict[str, Any], face: str) -> str:
+    """Look up a per-face string; side falls back to front, anything else to top."""
+    if not isinstance(table, dict):
+        return ""
+    if face in table:
+        return str(table[face] or "")
+    if face == "side":
+        return str(table.get("front") or "")
+    return str(table.get("top") or "")
+
+
+def _block_face_match_clause(profile: Optional[Dict[str, Any]], face: str) -> str:
+    clause = _face_table_lookup((profile or {}).get("face_match", {}), face)
+    return clause or _GENERIC_FACE_MATCH_CLAUSE
 
 
 _BLOCK_ICON_TRIGGER_TOKENS = frozenset(
@@ -1505,9 +1567,10 @@ _BLOCK_ICON_TRIGGER_TOKENS = frozenset(
 )
 
 
-def _block_icon_guard_clause(user_prompt: str, profile_key: str) -> str:
+def _block_icon_guard_clause(user_prompt: str, profile: Optional[Dict[str, Any]]) -> str:
     tokens = _reference_tokens(user_prompt)
-    if profile_key == "gem" or tokens & _BLOCK_ICON_TRIGGER_TOKENS:
+    needs_guard = bool(profile and profile.get("icon_guard")) or bool(tokens & _BLOCK_ICON_TRIGGER_TOKENS)
+    if needs_guard:
         return (
             "Do NOT draw a gem item icon, faceted jewel, loot sprite, inventory item, sword, tool, UI icon, "
             "or cut-diamond illustration. Draw only flat square block material texture. "
@@ -1523,98 +1586,29 @@ def _block_face_label(face: str) -> str:
     return "front vertical face"
 
 
-def _block_face_rules(profile_key: str, face: str) -> Tuple[str, str]:
-    if profile_key == "desert":
-        if face == "top":
-            return (
-                "top horizontal face",
-                (
-                    "Read as horizontal sand surface only: wind-shaped grains, pale gold and tan clusters, tiny pebble "
-                    "specks, sparse cracked dry patterns. Do not draw brick, masonry, vertical walls, side material, "
-                    "or cube sides. "
-                ),
-            )
-        return (
-            "front vertical face",
-            (
-                "Read as vertical sand/sandstone wall only: compacted sediment strata, grainy sand pockets, warm tan "
-                "and gold erosion marks. Must remain the same sand block material family as the top face. "
-                "Do not draw brick grids, red clay bricks, masonry blocks, cobblestone rectangles, grass, roots, "
-                "or a separate top surface. "
-            ),
-        )
-    if profile_key == "ocean":
-        if face == "top":
-            return (
-                "top horizontal face",
-                (
-                    "Read as wet rock/coral top surface only: tiny coral specks, seaweed flecks, turquoise highlights, "
-                    "damp uneven mineral texture. No vertical wall, no side material, no scene. "
-                ),
-            )
-        return (
-            "front vertical face",
-            (
-                "Read as wet rock vertical wall only: algae streaks, barnacle-like dots, blue-green shadows, underwater "
-                "mineral texture. No sandy beach, no grass, no separate top surface. "
-            ),
-        )
-    if profile_key == "forest":
-        if face == "top":
-            return (
-                _block_face_label(face),
-                (
-                    "Read as horizontal/top surface material only: mostly green grass, moss, rounded leaves, leafy clusters, "
-                    "tiny flowers, and dark gaps between foliage. "
-                    "Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. "
-                ),
-            )
-        return (
-            _block_face_label(face),
-            (
-                "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. "
-                "Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. "
-                "A very thin grass or moss lip is allowed only along the upper edge. "
-            ),
-        )
-    if profile_key == "wood":
-        if face == "top":
-            return (
-                _block_face_label(face),
-                (
-                    "Read as log top/end grain only: circular wood growth rings, tan and brown bands. "
-                    "No grass, leaves, moss, dirt, stone, or cube preview. "
-                ),
-            )
-        return (
-            _block_face_label(face),
-            (
-                "Read as vertical log bark only: brown vertical stripes with darker grooves. "
-                "Must match the other bark face and the same log as the ring top face. "
-                "No grass, leaves, moss, dirt, stone, or separate top surface. "
-            ),
-        )
-    if face == "top":
-        return (
-            _block_face_label(face),
-            (
-                "Read as one flat pixel-art material tile for the top face only. "
-                "Follow the user material request literally and keep the same material family on every face. "
-                "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
-                "or tile seams unless the user explicitly asked for brick or masonry. "
-                "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
-            ),
-        )
-    return (
-        _block_face_label(face),
-        (
-            "Read as one flat pixel-art material tile for this side/front face only. "
-            "Follow the user material request literally and keep the same material family as the top face. "
-            "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
-            "or tile seams unless the user explicitly asked for brick or masonry. "
-            "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
-        ),
-    )
+_GENERIC_FACE_RULES = {
+    "top": (
+        "Read as one flat pixel-art material tile for the top face only. "
+        "Follow the user material request literally and keep the same material family on every face. "
+        "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
+        "or tile seams unless the user explicitly asked for brick or masonry. "
+        "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
+    ),
+    "front": (
+        "Read as one flat pixel-art material tile for this side/front face only. "
+        "Follow the user material request literally and keep the same material family as the top face. "
+        "Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, "
+        "or tile seams unless the user explicitly asked for brick or masonry. "
+        "No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture. "
+    ),
+}
+
+
+def _block_face_rules(profile: Optional[Dict[str, Any]], face: str) -> Tuple[str, str]:
+    rules = _face_table_lookup((profile or {}).get("face_rules", {}), face)
+    if not rules:
+        rules = _GENERIC_FACE_RULES["top" if face == "top" else "front"]
+    return _block_face_label(face), rules
 
 
 def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width: int, source_height: int) -> str:
@@ -1646,9 +1640,9 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
     style_title = str(style_context.get("title") or style_context.get("key") or "").strip()
     has_style_target = bool(style_context.get("target_style_selected", style_title and style_title.lower() not in {"none", "no style target"}))
     style_part = " Style target: %s." % style_title if has_style_target and style_title else ""
-    match_part = _block_face_match_clause(profile_key, face)
-    face_label, face_rules = _block_face_rules(profile_key, face)
-    icon_guard_part = _block_icon_guard_clause(user_prompt, profile_key)
+    match_part = _block_face_match_clause(profile, face)
+    face_label, face_rules = _block_face_rules(profile, face)
+    icon_guard_part = _block_icon_guard_clause(user_prompt, profile)
 
     return (
         "Create a %sx%s seamless pixel art material texture tile. "
