@@ -1,0 +1,519 @@
+{
+  "forest": {
+    "title": "Forest Grass Dirt Block",
+    "keywords": [
+      "forest",
+      "grass",
+      "leaf",
+      "leaves",
+      "moss",
+      "root",
+      "roots",
+      "tree"
+    ],
+    "top": "dense forest ground canopy made of many rounded green leaf clusters, clover-like leaf shapes, moss patches, tiny yellow flower dots, dark teal shadow gaps, organic leafy noise; mostly green, not plain flat grass",
+    "front": "vertical wall of tangled exposed tree roots and twisting brown branches, rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe along the upper seam; root lattice texture, not plain dirt",
+    "face_rules": {
+      "top": "Read as horizontal/top surface material only: mostly green grass, moss, rounded leaves, leafy clusters, tiny flowers, and dark gaps between foliage. Do not draw the dirt wall, exposed soil side, root lattice, trunks, vertical side material, cube sides, or a scene. ",
+      "front": "Read as vertical/front side material only: dirt, soil, roots, stone, bark-like side texture, or exposed block wall. Prioritize the side-wall material even when the material idea mentions grass, moss, leaves, or forest floor. A very thin grass or moss lip is allowed only along the upper edge. "
+    },
+    "face_match": {
+      "top": "Cross-face consistency: this top foliage must use the same green shades, leaf cluster shapes, moss density, and yellow flower specks as the thin mossy grass fringe on the upper edge of the matching front face of this block. ",
+      "front": "Cross-face consistency: the mossy green fringe along the upper 3-4 pixels must use the exact same green palette, leaf cluster shapes, and moss density as the top face foliage of this same block. "
+    }
+  },
+  "desert": {
+    "title": "Desert Sandstone Block",
+    "keywords": [
+      "desert",
+      "sand",
+      "sandstone",
+      "dry",
+      "dune"
+    ],
+    "top": "warm sandy top surface with small wind-shaped grains, pale gold and tan color variation, sparse cracked patterns",
+    "front": "compact sand and sandstone vertical wall with soft horizontal strata, grainy sand pockets, warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks",
+    "face_rules": {
+      "top": "Read as horizontal sand surface only: wind-shaped grains, pale gold and tan clusters, tiny pebble specks, sparse cracked dry patterns. Do not draw brick, masonry, vertical walls, side material, or cube sides. ",
+      "front": "Read as vertical sand/sandstone wall only: compacted sediment strata, grainy sand pockets, warm tan and gold erosion marks. Must remain the same sand block material family as the top face. Do not draw brick grids, red clay bricks, masonry blocks, cobblestone rectangles, grass, roots, or a separate top surface. "
+    },
+    "face_match": {
+      "top": "Cross-face consistency: this sand top must use the same warm tan, gold, and pale beige grain colors as the sand/sandstone material on the matching front face of this block. ",
+      "front": "Cross-face consistency: this front face must stay in the same sand/sandstone material family as the top face, using matching tan and gold palette; the upper edge should read as compacted sand from the same block, not a different material like brick or masonry. "
+    }
+  },
+  "ocean": {
+    "title": "Ocean Coral Rock Block",
+    "keywords": [
+      "ocean",
+      "coral",
+      "sea",
+      "algae",
+      "water",
+      "underwater"
+    ],
+    "top": "wet blue-green coral rock top with tiny coral specks, seaweed flecks, cool turquoise highlights, damp uneven surface",
+    "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture",
+    "face_rules": {
+      "top": "Read as wet rock/coral top surface only: tiny coral specks, seaweed flecks, turquoise highlights, damp uneven mineral texture. No vertical wall, no side material, no scene. ",
+      "front": "Read as wet rock vertical wall only: algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture. No sandy beach, no grass, no separate top surface. "
+    },
+    "face_match": {
+      "top": "Cross-face consistency: this wet rock/coral top must use the same blue-green mineral palette as the matching front face of this block. ",
+      "front": "Cross-face consistency: this front face must use the same damp blue-green rock and algae palette as the top face of this same block. "
+    }
+  },
+  "barren": {
+    "title": "Stone Block",
+    "keywords": [
+      "barren",
+      "stone",
+      "rock",
+      "cracked",
+      "dusty",
+      "cobblestone",
+      "deepslate",
+      "granite",
+      "andesite"
+    ],
+    "uniform": true,
+    "material": "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, simple repeatable stone grain; the exact same material on every block face"
+  },
+  "gem": {
+    "title": "Gem Mineral Block",
+    "keywords": [
+      "diamond",
+      "emerald",
+      "lapis",
+      "quartz",
+      "amethyst",
+      "ruby",
+      "sapphire",
+      "gem",
+      "mineral"
+    ],
+    "uniform": true,
+    "icon_guard": true,
+    "material": "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; for diamond block use light cyan and aqua blue specks on a bright cyan base; for emerald block use green and teal specks on a bright emerald base; for lapis block use deep blue and navy specks on a royal blue base; identical flat block material on every face; NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration"
+  },
+  "metal": {
+    "title": "Metal Block",
+    "keywords": [
+      "iron",
+      "metal",
+      "steel",
+      "copper",
+      "bronze",
+      "silver",
+      "gold",
+      "ingot",
+      "tin",
+      "zinc"
+    ],
+    "uniform": true,
+    "material": "flat metal block material selected from the user's requested metal; gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, iron and steel blocks must be silver-gray, copper blocks must be orange-copper, and every face must use the exact same metal material; no gray rock, no stone grain, no grass, no dirt, no ore crystals"
+  },
+  "obsidian": {
+    "title": "Obsidian Block",
+    "keywords": [
+      "obsidian",
+      "volcanic",
+      "glassy",
+      "scoria"
+    ],
+    "uniform": true,
+    "material": "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, tiny lighter purple specks scattered sparsely, smooth glassy not rocky, no grass, no stone grain, no brick grid, no mortar lines"
+  },
+  "ice": {
+    "title": "Ice / Snow Block",
+    "keywords": [
+      "ice",
+      "frozen",
+      "frost",
+      "snow",
+      "snowy",
+      "glacier",
+      "tundra"
+    ],
+    "uniform": true,
+    "material": "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass"
+  },
+  "glass": {
+    "title": "Glass Block",
+    "keywords": [
+      "glass",
+      "glasspane",
+      "window",
+      "stained"
+    ],
+    "uniform": true,
+    "material": "flat translucent glass block material with a 1px lighter rim on all four edges, very pale tint inside, sparse single-pixel highlights, mostly empty interior; no brick grid, no stone, no grass; the rim suggests a glass pane edge"
+  },
+  "brick": {
+    "title": "Brick Block",
+    "keywords": [
+      "brick",
+      "bricks",
+      "masonry",
+      "mortar"
+    ],
+    "uniform": true,
+    "material": "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of red, orange, or tan for natural variation; tileable seamlessly on all edges"
+  },
+  "nether": {
+    "title": "Nether / Volcanic Block",
+    "keywords": [
+      "nether",
+      "netherrack",
+      "lava",
+      "magma",
+      "hellstone",
+      "infernal"
+    ],
+    "uniform": true,
+    "material": "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, small black pitted holes, ember-like bright pixels scattered sparsely; no gray stone, no brick grid, no grass, no water"
+  },
+  "mushroom": {
+    "title": "Mushroom Block",
+    "keywords": [
+      "mushroom",
+      "fungus",
+      "shroom",
+      "toadstool"
+    ],
+    "uniform": true,
+    "material": "flat mushroom block material: red cap face has bright red base with round white spots, stem face has cream-white base with subtle vertical fiber lines; no grass, no dirt, no stone, no brick"
+  },
+  "dirt": {
+    "title": "Plain Dirt Block",
+    "keywords": [
+      "dirt",
+      "soil",
+      "mud",
+      "earth",
+      "loam"
+    ],
+    "uniform": true,
+    "material": "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, tiny lighter tan pebble pixels, small black holes; no grass top, no roots, no stone, no brick"
+  },
+  "wood": {
+    "title": "Wood Log Block",
+    "keywords": [
+      "wood",
+      "log",
+      "plank",
+      "planks",
+      "oak",
+      "birch",
+      "spruce",
+      "jungle",
+      "bark",
+      "timber"
+    ],
+    "top": "oak log top with circular growth rings, light tan and medium brown ring bands, simple flat pixel texture, no grass and no leaves",
+    "front": "oak log bark with vertical brown stripes, medium brown base with darker brown grooves, simple flat pixel texture, no grass, no dirt, and no leaves",
+    "side": "oak log bark side face with the same vertical brown stripe pattern and palette as the front face, simple flat pixel texture, no grass, no dirt, and no leaves",
+    "face_rules": {
+      "top": "Read as log top/end grain only: circular wood growth rings, tan and brown bands. No grass, leaves, moss, dirt, stone, or cube preview. ",
+      "front": "Read as vertical log bark only: brown vertical stripes with darker grooves. Must match the other bark face and the same log as the ring top face. No grass, leaves, moss, dirt, stone, or separate top surface. "
+    },
+    "face_match": {
+      "top": "Cross-face consistency: this log top must use the same brown and tan ring palette as the bark on the front and side faces of this same wood block. ",
+      "front": "Cross-face consistency: this bark face must use the same brown stripe palette and groove density as the other bark face and must belong to the same oak log as the ring top face. No grass, dirt, or leaves. "
+    }
+  },
+  "clay": {
+    "title": "Clay / Terracotta Block",
+    "keywords": [
+      "clay",
+      "terracotta",
+      "ceramic",
+      "kaolin"
+    ],
+    "uniform": true,
+    "material": "smooth warm orange-brown ceramic block with low-contrast pixel noise, subtle darker terracotta speck variations, no cracks; identical on every face"
+  },
+  "end_stone": {
+    "title": "End Stone Block",
+    "keywords": [
+      "end",
+      "endstone",
+      "purpur"
+    ],
+    "match_all": [
+      "end"
+    ],
+    "uniform": true,
+    "material": "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, alien smooth texture; no grass, no brick"
+  },
+  "prismarine": {
+    "title": "Prismarine Block",
+    "keywords": [
+      "prismarine",
+      "aquamarine"
+    ],
+    "uniform": true,
+    "material": "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass"
+  },
+  "basalt": {
+    "title": "Basalt Block",
+    "keywords": [
+      "basalt",
+      "columnar"
+    ],
+    "uniform": true,
+    "material": "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, subtle warmer brown speck noise; no brick grid, no mortar"
+  },
+  "calcite": {
+    "title": "Calcite Block",
+    "keywords": [
+      "calcite",
+      "chalk"
+    ],
+    "uniform": true,
+    "material": "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; no brick, no grass, no cracks"
+  },
+  "soul_sand": {
+    "title": "Soul Sand Block",
+    "keywords": [
+      "soul",
+      "soulsand"
+    ],
+    "match_all": [
+      "soul"
+    ],
+    "uniform": true,
+    "material": "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; no brick, no grass"
+  },
+  "coal_block": {
+    "title": "Coal Block",
+    "keywords": [
+      "coal"
+    ],
+    "uniform": true,
+    "material": "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, smooth dense look; no brick, no grass"
+  },
+  "glowstone": {
+    "title": "Glowstone Block",
+    "keywords": [
+      "glowstone",
+      "luminous"
+    ],
+    "uniform": true,
+    "material": "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, soft inner glow halo; no brick, no grass"
+  },
+  "redstone_block": {
+    "title": "Redstone Block",
+    "keywords": [
+      "redstone"
+    ],
+    "match_all": [
+      "redstone"
+    ],
+    "uniform": true,
+    "material": "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, faint pinkish circuit-dust scatter; no brick, no grass"
+  },
+  "bone_block": {
+    "title": "Bone Block",
+    "keywords": [
+      "bone"
+    ],
+    "match_all": [
+      "bone"
+    ],
+    "uniform": true,
+    "material": "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, subtle pale gray shadow noise; no brick, no grass"
+  },
+  "wool": {
+    "title": "Wool / Cloth Block",
+    "keywords": [
+      "wool",
+      "cloth",
+      "carpet"
+    ],
+    "uniform": true,
+    "material": "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs (color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); soft texture, no brick, no grass"
+  },
+  "hay_bale": {
+    "title": "Hay Bale Block",
+    "keywords": [
+      "hay",
+      "haystack",
+      "straw"
+    ],
+    "top": "hay bale top face: concentric circle of bound golden straw seen end-on, warm yellow base, darker tan stripe rings, small specks of straw fiber",
+    "front": "hay bale front face: horizontal bands of bound golden straw with vertical fiber lines, warm yellow base, darker tan shadow stripes; no grass top",
+    "side": "hay bale side face: horizontal bands of bound golden straw with vertical fiber lines, matching the front face palette"
+  },
+  "honeycomb": {
+    "title": "Honeycomb Block",
+    "keywords": [
+      "honeycomb",
+      "honey"
+    ],
+    "uniform": true,
+    "material": "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, single highlight pixels in each cell suggesting honey; no brick, no grass"
+  },
+  "slime_block": {
+    "title": "Slime Block",
+    "keywords": [
+      "slime",
+      "gel",
+      "jelly"
+    ],
+    "uniform": true,
+    "material": "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass"
+  },
+  "cactus": {
+    "title": "Cactus Block",
+    "keywords": [
+      "cactus",
+      "saguaro"
+    ],
+    "uniform": true,
+    "material": "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots scattered, slightly paler green highlights; no brick, no grass"
+  },
+  "moss_block": {
+    "title": "Moss Block",
+    "keywords": [
+      "moss",
+      "mossblock"
+    ],
+    "match_all": [
+      "moss"
+    ],
+    "uniform": true,
+    "material": "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow highlight specks, organic clumpy texture; no leaves, no dirt, no roots"
+  },
+  "leaves_block": {
+    "title": "Leaves Block",
+    "keywords": [
+      "leaves"
+    ],
+    "match_all": [
+      "leaves"
+    ],
+    "uniform": true,
+    "material": "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood"
+  },
+  "pumpkin": {
+    "title": "Pumpkin Block",
+    "keywords": [
+      "pumpkin",
+      "jack",
+      "lantern"
+    ],
+    "top": "pumpkin top face: warm orange surface with a small green-brown stem in the center, faint darker orange ridges radiating outward",
+    "front": "pumpkin front face: warm orange base with vertical darker orange ridges; if jack-o-lantern, include simple carved eyes and grin in dark cutouts; no brick",
+    "side": "pumpkin side face: warm orange base with vertical darker orange ridges matching the front face palette; no carving on side"
+  },
+  "mycelium": {
+    "title": "Mycelium Block",
+    "keywords": [
+      "mycelium",
+      "fungus_dirt"
+    ],
+    "top": "mycelium top face: muted purple-gray surface with scattered tiny darker purple fungal specks and faint pale fiber lines",
+    "front": "mycelium front face: warm brown dirt with a thin purple-gray mycelium fringe along the top edge, small purple speck drips below; no roots, no grass",
+    "side": "mycelium side face: warm brown dirt with a thin purple-gray mycelium fringe along the top edge, matching the front face palette"
+  },
+  "podzol": {
+    "title": "Podzol Block",
+    "keywords": [
+      "podzol"
+    ],
+    "match_all": [
+      "podzol"
+    ],
+    "top": "podzol top face: dark brown ground with scattered orange-brown fallen pine-needle clusters and tiny white snow specks; no grass",
+    "front": "podzol front face: warm brown dirt with a thin orange-brown needle layer along the top edge, subtle white snow flecks; no roots, no green grass",
+    "side": "podzol side face: warm brown dirt with a thin orange-brown needle layer along the top edge, matching the front face palette"
+  },
+  "lava": {
+    "title": "Lava Block",
+    "keywords": [
+      "lava",
+      "magma"
+    ],
+    "match_all": [
+      "lava"
+    ],
+    "uniform": true,
+    "material": "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, tiny white-hot ember specks; intense inner glow; no brick, no grass"
+  },
+  "ebonstone": {
+    "title": "Ebonstone Block (Corruption)",
+    "keywords": [
+      "ebonstone",
+      "corruption",
+      "corrupt"
+    ],
+    "uniform": true,
+    "material": "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, ominous shadow gaps; no brick, no grass"
+  },
+  "crimstone": {
+    "title": "Crimstone Block (Crimson)",
+    "keywords": [
+      "crimstone",
+      "crimson",
+      "crimtane"
+    ],
+    "uniform": true,
+    "material": "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red specks; organic ominous look; no brick, no grass"
+  },
+  "pearlstone": {
+    "title": "Pearlstone Block (Hallow)",
+    "keywords": [
+      "pearlstone",
+      "hallow",
+      "hallowed"
+    ],
+    "uniform": true,
+    "material": "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, magical pure look; no brick, no grass"
+  },
+  "hellstone": {
+    "title": "Hellstone Block",
+    "keywords": [
+      "hellstone",
+      "infernal"
+    ],
+    "match_all": [
+      "hellstone"
+    ],
+    "uniform": true,
+    "material": "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, tiny ember specks; intense underworld look; no brick, no grass"
+  },
+  "larva_floor": {
+    "title": "Larva Block (Core Keeper)",
+    "keywords": [
+      "larva",
+      "larvae"
+    ],
+    "match_all": [
+      "larva"
+    ],
+    "uniform": true,
+    "material": "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, soft top-down shading; no brick, no grass, no dirt"
+  },
+  "azeos_floor": {
+    "title": "Azeos Ground (Core Keeper)",
+    "keywords": [
+      "azeos",
+      "skyland"
+    ],
+    "uniform": true,
+    "material": "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island look; muted earthy palette; no brick, no grass"
+  },
+  "shimmering_stone": {
+    "title": "Shimmering Stone (Core Keeper)",
+    "keywords": [
+      "shimmering",
+      "shimmer"
+    ],
+    "match_all": [
+      "shimmering"
+    ],
+    "uniform": true,
+    "material": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass"
+  }
+}

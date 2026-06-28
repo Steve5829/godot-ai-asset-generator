@@ -1,0 +1,136 @@
+{
+  "sword": {
+    "title": "Sword",
+    "keywords": [
+      "sword",
+      "blade",
+      "shortsword",
+      "broadsword",
+      "scimitar"
+    ],
+    "visual": "long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline."
+  },
+  "pickaxe": {
+    "title": "Pickaxe",
+    "keywords": [
+      "pickaxe"
+    ],
+    "visual": "mining pickaxe with a curved double-pronged head on top and a short straight handle below. Per-style orientation: Core Keeper top-down view; Terraria diagonal 45deg with dark outline; Minecraft flat 16x16 with a diagonal T-shape head-and-stick silhouette and no outline."
+  },
+  "axe_tool": {
+    "title": "Axe / Hatchet",
+    "keywords": [
+      "axe",
+      "hatchet",
+      "battleaxe"
+    ],
+    "match_all": [
+      "axe"
+    ],
+    "visual": "axe with a wedge-shaped head on top of a short handle; head clearly wider than the handle. Same per-style orientation rules as a pickaxe (top-down for Core Keeper, 45deg for Terraria, flat tile for Minecraft)."
+  },
+  "shovel": {
+    "title": "Shovel",
+    "keywords": [
+      "shovel",
+      "spade"
+    ],
+    "visual": "shovel with a flat spade head and a long handle; head narrower than a pickaxe head. Same per-style orientation rules as other tools."
+  },
+  "bow_weapon": {
+    "title": "Bow",
+    "keywords": [
+      "bow",
+      "shortbow",
+      "longbow"
+    ],
+    "match_all": [
+      "bow"
+    ],
+    "visual": "curved bow body forming a C-shape with a thin tight bowstring along the inside edge; 1px string must remain readable at the icon size."
+  },
+  "potion": {
+    "title": "Potion / Vial",
+    "keywords": [
+      "potion",
+      "vial",
+      "elixir",
+      "flask",
+      "bottle"
+    ],
+    "visual": "small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.)."
+  },
+  "coin": {
+    "title": "Coin",
+    "keywords": [
+      "coin",
+      "currency",
+      "doubloon"
+    ],
+    "visual": "circular metal coin viewed face-on, darker rim around the edge, a simple stamped symbol or face in the center, one bright highlight pixel for shine. Metal palette follows the prompt (gold, silver, copper)."
+  },
+  "key": {
+    "title": "Key",
+    "keywords": [
+      "key",
+      "keys"
+    ],
+    "visual": "small key with a round or ornate bow on one end, a thin straight shaft, and 1-2 simple teeth on the other end; compact silhouette so bow and teeth are both readable."
+  },
+  "gem_icon": {
+    "title": "Gem / Crystal",
+    "keywords": [
+      "gem",
+      "crystal",
+      "jewel",
+      "diamond",
+      "ruby",
+      "sapphire",
+      "emerald",
+      "amethyst",
+      "topaz"
+    ],
+    "visual": "faceted gemstone with visible flat facets, bright highlight on upper facets and darker shadow facets below; color follows the named stone (ruby red, sapphire blue, emerald green, diamond cyan, amethyst purple). Centered diamond or hexagon silhouette."
+  },
+  "ingot": {
+    "title": "Ingot / Metal Bar",
+    "keywords": [
+      "ingot",
+      "bar",
+      "bullion"
+    ],
+    "visual": "small rectangular smelted metal bar with beveled top edges; a single bright highlight pixel on the top facet. Metal palette follows the prompt (gold, iron, copper, steel)."
+  },
+  "torch_icon": {
+    "title": "Torch",
+    "keywords": [
+      "torch"
+    ],
+    "visual": "vertical torch: brown wooden stick with a small bright orange-yellow flame at the top; faint soft glow halo around the flame."
+  },
+  "scroll_book": {
+    "title": "Scroll / Book",
+    "keywords": [
+      "scroll",
+      "parchment",
+      "book",
+      "tome",
+      "spellbook"
+    ],
+    "visual": "rolled parchment scroll with a colored ribbon tie, OR a closed book with a colored cover and gold rim and clasps; match whichever the user named. Cream-colored paper edges visible."
+  },
+  "food": {
+    "title": "Food",
+    "keywords": [
+      "apple",
+      "bread",
+      "loaf",
+      "berry",
+      "cheese",
+      "meat",
+      "fruit",
+      "food"
+    ],
+    "visual": "small handheld food item centered in the frame: round shape for apple/berry, oval rounded shape for bread/loaf, wedge for cheese, irregular chunk for meat. Warm food palette with one small highlight pixel."
+  }
+}
