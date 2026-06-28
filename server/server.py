@@ -1814,13 +1814,19 @@ def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str
         return normalized_requested
 
     lowered = prompt.lower()
-    if any(token in lowered for token in ("spritesheet", "sprite sheet", "walk cycle", "animation frame", "animation sheet")):
+    if any(token in lowered for token in (
+        "spritesheet", "sprite sheet", "walk cycle", "run cycle", "animation",
+        "animation frame", "animation sheet", "animated",
+    )):
         return "spritesheet"
     if any(token in lowered for token in ("two-face", "two face", "top and front", "top/front", "block texture", "voxel block")):
         return "block_texture"
     if re.search(r"\bblock\b", lowered):
         return "block_texture"
     if any(token in lowered for token in ("ground atlas", "terrain atlas", "tile atlas", "atlas", "tilemap", "terrain", "ground tile", "floor tile")):
+        return "ground_atlas"
+    # Bare "ground"/"floor" read as tileable terrain (word boundary skips "background", "underground").
+    if re.search(r"\b(ground|floor)\b", lowered):
         return "ground_atlas"
     if any(token in lowered for token in (
         "house", "building", "castle", "tower", "shop", "tavern", "hut", "cabin",
@@ -2063,9 +2069,9 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "Pick asset_type from {icon, block_texture, ground_atlas, spritesheet, reference_scene}:\n"
                 "- block_texture: a single block's face material (input has 'block' or a clear material name).\n"
                 "- reference_scene: any building/structure/environment (house, castle, tower, ruins, etc.).\n"
-                "- ground_atlas: continuous tileable terrain swatch.\n"
-                "- spritesheet: animation frames or grid of cells.\n"
-                "- icon: single inventory/UI item (default).\n"
+                "- ground_atlas: continuous tileable terrain swatch (forest ground, dungeon floor, grass field, etc.).\n"
+                "- spritesheet: animation frames or a grid of cells (walk/idle/attack animation, explosion frames).\n"
+                "- icon: single inventory/UI item, prop, or static character sprite (default).\n"
                 "Use the corresponding workflow (single_image for icon, the block_texture_* for blocks, and so on). "
                 "Honour style_context when style_target is not 'none'; otherwise stay style-neutral. "
                 "If reference_context or icon_reference_profile is present, use them as anchors — don't trace them. "
