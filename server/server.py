@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from style_matrix import STYLE_MATRIX, style_profile_dict
+from style_matrix import STYLE_BLOCK_LAYOUTS, STYLE_MATRIX, style_block_layout, style_profile_dict
 
 BASE_DIR = Path(__file__).resolve().parent
 for env_path in (
@@ -799,40 +799,21 @@ ICON_REFERENCE_PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 
-BLOCK_TEXTURE_STYLE_LAYOUTS: Dict[str, Dict[str, Any]] = {
-    "core_keeper": {
-        "workflow": "block_texture_two_face",
-        "final_width": 32,
-        "top_height": 16,
-        "front_height": 32,
-        "side_height": 0,
-    },
-    "minecraft": {
-        "workflow": "block_texture_three_face",
-        "compose_mode": "isometric",
-        "final_width": 16,
-        "top_height": 16,
-        "front_height": 16,
-        "side_height": 16,
-        "output_width": 32,
-        "output_height": 32,
-    },
-    "terraria": {
-        "workflow": "block_texture_two_face",
-        "final_width": 32,
-        "top_height": 16,
-        "front_height": 32,
-        "side_height": 0,
-    },
+_DEFAULT_BLOCK_LAYOUT = {
+    "workflow": "block_texture_two_face",
+    "final_width": 32,
+    "top_height": 16,
+    "front_height": 32,
+    "side_height": 0,
 }
 
 
 def _block_texture_layout(style_target: str) -> Dict[str, Any]:
     normalized = _normalize_style_target(style_target)
-    default_layout = BLOCK_TEXTURE_STYLE_LAYOUTS["core_keeper"]
-    if normalized == "none":
-        return dict(default_layout)
-    return dict(BLOCK_TEXTURE_STYLE_LAYOUTS.get(normalized, default_layout))
+    layout = style_block_layout(normalized) if normalized != "none" else {}
+    if not layout:
+        layout = style_block_layout("core_keeper") or _DEFAULT_BLOCK_LAYOUT
+    return dict(layout)
 
 
 def _block_profile_key(profile: Optional[Dict[str, Any]]) -> str:
