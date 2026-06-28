@@ -1279,6 +1279,36 @@ def _coerce_postprocess_config(asset_type: str, value: Any, fallback: Dict[str, 
     return config
 
 
+def _resolve_reference_context(
+    prompt: str,
+    style_target: str,
+    asset_type: str,
+    cached: Optional[Dict[str, Any]] = None,
+    cached_asset_type: str = "",
+) -> Optional[Dict[str, Any]]:
+    """Reference context for asset_type, reusing the cache only when the type is unchanged.
+
+    Rebuilding when the asset_type changed is what stops a context built for one
+    asset_type (e.g. an icon) from leaking into another (e.g. a block texture).
+    """
+    if cached is not None and _normalize_asset_type(asset_type) == _normalize_asset_type(cached_asset_type):
+        return cached
+    return _build_reference_context(prompt, style_target, asset_type)
+
+
+def _attach_reference_and_finalize(
+    plan: Dict[str, Any],
+    reference_context: Optional[Dict[str, Any]],
+    style_target: str,
+    workflow_mode: str,
+) -> Dict[str, Any]:
+    """Shared pipeline tail: attach reference data, then apply block-texture layout."""
+    if reference_context:
+        plan["reference_context"] = reference_context
+        plan["reference_images"] = reference_context.get("reference_images", [])
+    return _finalize_block_texture_plan(plan, style_target, workflow_mode)
+
+
 def _finalize_block_texture_plan(
     plan: Dict[str, Any],
     style_target: str,
@@ -1381,10 +1411,7 @@ def _fallback_generation_plan(
         "planning_source": "fallback",
         "planning_note": note,
     }
-    if reference_context:
-        plan["reference_context"] = reference_context
-        plan["reference_images"] = reference_context.get("reference_images", [])
-    return _finalize_block_texture_plan(plan, normalized_style, workflow_mode)
+    return _attach_reference_and_finalize(plan, reference_context, normalized_style, workflow_mode)
 
 
 def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
@@ -1465,10 +1492,13 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         postprocess = _coerce_postprocess_config(planned_asset_type, postprocess, fallback_postprocess)
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
     raw_description = str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip()
-    reference_context = fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None
-    fallback_asset_type = _normalize_asset_type(fallback.get("asset_type") or "icon")
-    if reference_context and planned_asset_type != fallback_asset_type:
-        reference_context = _build_reference_context(request.prompt, normalized_style, planned_asset_type)
+    reference_context = _resolve_reference_context(
+        request.prompt,
+        normalized_style,
+        planned_asset_type,
+        fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None,
+        _normalize_asset_type(fallback.get("asset_type") or "icon"),
+    )
     primary_description = _enrich_description(raw_description, request.prompt, planned_asset_type, normalized_style, reference_context)
     notes = plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."]
     if reference_context and reference_context.get("failure"):
@@ -1498,10 +1528,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         "planning_source": "llm",
         "planning_note": "Used LLM-generated plan.",
     }
-    if reference_context:
-        resolved_plan["reference_context"] = reference_context
-        resolved_plan["reference_images"] = reference_context.get("reference_images", [])
-    return _finalize_block_texture_plan(resolved_plan, normalized_style, workflow_mode)
+    return _attach_reference_and_finalize(resolved_plan, reference_context, normalized_style, workflow_mode)
 
 
 def _provider_rejection_fallback_plan(
