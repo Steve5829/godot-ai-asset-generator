@@ -42,6 +42,17 @@ CASES = [
         {"prompt": "stone house", "style_target": "none"},
         {"asset_type": "reference_scene", "description": "a small stone cottage"},
     ),
+    # Explicit type-naming keyword must win even when the LLM guesses otherwise.
+    (
+        "explicit_atlas_over_llm",
+        {"prompt": "an atlas of city", "style_target": "none"},
+        {"asset_type": "icon", "description": "a city"},
+    ),
+    (
+        "explicit_spritesheet_over_llm",
+        {"prompt": "goblin walk spritesheet", "style_target": "none"},
+        {"asset_type": "icon", "description": "a goblin"},
+    ),
 ]
 
 CAPTURE_FIELDS = ("asset_type", "workflow", "width", "height", "no_background", "planning_source", "style_target")

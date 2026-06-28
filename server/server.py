@@ -1177,6 +1177,27 @@ def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str
     return "icon"
 
 
+# Words that NAME the output type. When present the user is making a deliberate
+# asset_type request, so it wins over the LLM's semantic guess. Content words
+# (house, city, goblin) stay LLM-overridable; only type-naming words lock here.
+_EXPLICIT_ASSET_TYPE_MARKERS = (
+    ("spritesheet", ("spritesheet", "sprite sheet")),
+    ("ground_atlas", ("atlas", "tilemap", "tileset")),
+    ("block_texture", ("block texture", "voxel block")),
+)
+
+
+def _explicit_asset_type(prompt: str) -> str:
+    """Return a locked asset_type when the prompt explicitly names one, else ''."""
+    lowered = str(prompt or "").lower()
+    if re.search(r"\bblock\b", lowered):
+        return "block_texture"
+    for asset_type, markers in _EXPLICIT_ASSET_TYPE_MARKERS:
+        if any(marker in lowered for marker in markers):
+            return asset_type
+    return ""
+
+
 def _default_workflow_for_asset_type(asset_type: str, style_target: str = "none") -> str:
     if asset_type == "block_texture":
         return str(_block_texture_layout(style_target).get("workflow") or "block_texture_two_face")
@@ -1479,7 +1500,11 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         fallback["notes"] = fallback_notes
         return _finalize_block_texture_plan(fallback, normalized_style, workflow_mode)
 
-    planned_asset_type = _normalize_asset_type(plan.get("asset_type") if requested_asset_type == "auto" else requested_asset_type)
+    if requested_asset_type != "auto":
+        planned_asset_type = _normalize_asset_type(requested_asset_type)
+    else:
+        # An explicit type-naming keyword in the prompt overrides the LLM's guess.
+        planned_asset_type = _normalize_asset_type(_explicit_asset_type(request.prompt) or plan.get("asset_type"))
     default_dimensions = _default_generation_dimensions(planned_asset_type)
     fallback_dimensions = _parse_prompt_dimensions(request.prompt, default_dimensions["width"], default_dimensions["height"])
     asset_spec = _asset_type_spec(planned_asset_type)

@@ -1,4 +1,56 @@
 {
+  "explicit_atlas_over_llm": {
+    "asset_type": "ground_atlas",
+    "description": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+    "descriptions": {
+      "front": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., front face only, vertical side material",
+      "primary": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+      "side": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., side face only, vertical side material",
+      "top": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., top face only, seamless tile material"
+    },
+    "filename_stub": "ground_atlas_none_an_atlas_of_city",
+    "has_reference_context": false,
+    "height": 128,
+    "no_background": false,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {
+      "slice": false,
+      "tile_height": 32,
+      "tile_width": 32
+    },
+    "style_target": "none",
+    "width": 128,
+    "workflow": "ground_atlas"
+  },
+  "explicit_spritesheet_over_llm": {
+    "asset_type": "spritesheet",
+    "description": "a goblin",
+    "descriptions": {
+      "front": "a goblin, front face only, vertical side material",
+      "primary": "a goblin",
+      "side": "a goblin, side face only, vertical side material",
+      "top": "a goblin, top face only, seamless tile material"
+    },
+    "filename_stub": "spritesheet_none_goblin_walk_spritesheet",
+    "has_reference_context": false,
+    "height": 256,
+    "no_background": true,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {
+      "columns": 4,
+      "crop_cells": false,
+      "rows": 4
+    },
+    "style_target": "none",
+    "width": 256,
+    "workflow": "spritesheet"
+  },
   "fallback_atlas": {
     "asset_type": "ground_atlas",
     "description": "forest ground. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
