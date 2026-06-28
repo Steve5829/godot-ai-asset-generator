@@ -2503,6 +2503,26 @@ async def automate_editor(request: AutomationRequest) -> Dict[str, Any]:
         return _error(str(exc))
 
 
+_PROVIDER_LABELS = {"pixellab": "PixelLab", "openai_image": "GPT Image"}
+
+
+@app.get("/vibe/options")
+async def generation_options() -> Dict[str, Any]:
+    """Serve the style and provider choices the editor dropdowns should show.
+
+    Styles come straight from the loaded packs, so dropping a new packs/<key>.json
+    makes the editor offer it with no plugin code change.
+    """
+    styles = [{"value": "none", "label": "No Style Target"}]
+    for key, profile in sorted(STYLE_MATRIX.items()):
+        styles.append({"value": key, "label": str(profile.get("title") or key)})
+    providers = [
+        {"value": key, "label": _PROVIDER_LABELS.get(key, key.replace("_", " ").title())}
+        for key in sorted(SUPPORTED_GENERATION_PROVIDERS)
+    ]
+    return {"status": "success", "styles": styles, "providers": providers}
+
+
 if __name__ == "__main__":
     import uvicorn
 

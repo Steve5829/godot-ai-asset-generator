@@ -70,6 +70,7 @@ class SceneTreeContextMenuPlugin:
 
 
 var http_request: HTTPRequest
+var options_http_request: HTTPRequest
 var prompt_dialog: ConfirmationDialog
 var prompt_summary_label: Label
 var prompt_example_label: Label
@@ -77,6 +78,10 @@ var generation_settings_container: VBoxContainer
 var style_target_select: OptionButton
 var provider_select: OptionButton
 var prompt_input: TextEdit
+
+
+var style_options: Array = GENERATION_STYLE_OPTIONS.duplicate(true)
+var provider_options: Array = GENERATION_PROVIDER_OPTIONS.duplicate(true)
 
 var filesystem_create_menu
 var filesystem_asset_menu
@@ -94,7 +99,12 @@ func _enter_tree():
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
 
+	options_http_request = HTTPRequest.new()
+	add_child(options_http_request)
+	options_http_request.request_completed.connect(_on_options_completed)
+
 	_create_prompt_dialog()
+	_fetch_generation_options()
 
 	filesystem_create_menu = FilesystemCreateContextMenuPlugin.new(self)
 	filesystem_asset_menu = FilesystemAssetContextMenuPlugin.new(self)
@@ -121,6 +131,8 @@ func _exit_tree():
 		prompt_dialog.queue_free()
 	if http_request:
 		http_request.queue_free()
+	if options_http_request:
+		options_http_request.queue_free()
 
 
 func _create_prompt_dialog():
@@ -154,7 +166,7 @@ func _create_prompt_dialog():
 
 	style_target_select = OptionButton.new()
 	style_target_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_populate_option_button(style_target_select, GENERATION_STYLE_OPTIONS)
+	_populate_option_button(style_target_select, style_options)
 	generation_settings_container.add_child(style_target_select)
 
 	var provider_label = Label.new()
@@ -163,7 +175,7 @@ func _create_prompt_dialog():
 
 	provider_select = OptionButton.new()
 	provider_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_populate_option_button(provider_select, GENERATION_PROVIDER_OPTIONS)
+	_populate_option_button(provider_select, provider_options)
 	generation_settings_container.add_child(provider_select)
 
 	prompt_input = TextEdit.new()
@@ -185,6 +197,49 @@ func _populate_option_button(button: OptionButton, options: Array):
 		button.set_item_metadata(item_index, item_value)
 	if button.item_count > 0:
 		button.select(0)
+
+
+func _fetch_generation_options():
+	if options_http_request == null:
+		return
+	if options_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		return
+	var error = options_http_request.request(BACKEND_URL + "/options")
+	if error != OK:
+		print("Vibe: could not fetch generation options, using built-in defaults (", error, ")")
+
+
+func _normalize_option_list(raw, fallback: Array) -> Array:
+	if typeof(raw) != TYPE_ARRAY:
+		return fallback
+	var normalized: Array = []
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var value = String(entry.get("value", ""))
+		if value.is_empty():
+			continue
+		normalized.append({"value": value, "label": String(entry.get("label", value))})
+	if normalized.is_empty():
+		return fallback
+	return normalized
+
+
+func _on_options_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+	if result != HTTPRequest.RESULT_SUCCESS or response_code >= 400:
+		print("Vibe: options request failed (", result, "/", response_code, "), keeping built-in defaults")
+		return
+
+	var payload = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(payload) != TYPE_DICTIONARY:
+		return
+
+	style_options = _normalize_option_list(payload.get("styles"), style_options)
+	provider_options = _normalize_option_list(payload.get("providers"), provider_options)
+	if style_target_select:
+		_populate_option_button(style_target_select, style_options)
+	if provider_select:
+		_populate_option_button(provider_select, provider_options)
 
 
 func _selected_option_value(button: OptionButton, fallback: String) -> String:
