@@ -49,7 +49,6 @@
       "coral",
       "sea",
       "algae",
-      "water",
       "underwater"
     ],
     "top": "wet blue-green coral rock top with tiny coral specks, seaweed flecks, cool turquoise highlights, damp uneven surface",
@@ -515,5 +514,56 @@
     ],
     "uniform": true,
     "material": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass"
+  },
+  "water": {
+    "title": "Water / Liquid Block",
+    "keywords": [
+      "water",
+      "liquid",
+      "river",
+      "pond",
+      "pool"
+    ],
+    "match_all": [
+      "water"
+    ],
+    "uniform": true,
+    "material": "flat translucent blue water surface with gentle lighter-blue ripple lines and a few small white sparkle highlights, smooth and calm; no rock, no coral, no foam edges, no brick"
+  },
+  "gravel": {
+    "title": "Gravel Block",
+    "keywords": [
+      "gravel",
+      "pebble",
+      "pebbles",
+      "shingle"
+    ],
+    "uniform": true,
+    "material": "loose gray gravel made of many small rounded pebbles in mixed gray and brown tones with dark gaps between stones; no large rocks, no brick grid, no grass"
+  },
+  "farmland": {
+    "title": "Farmland / Tilled Soil Block",
+    "keywords": [
+      "farmland",
+      "tilled",
+      "plowed",
+      "furrow",
+      "soil_row"
+    ],
+    "match_all": [
+      "farmland"
+    ],
+    "uniform": true,
+    "material": "rich dark brown tilled farmland with evenly spaced raised soil rows and shallow furrows, small darker moisture patches and tiny pebble specks; no grass, no brick, no crops"
+  },
+  "concrete": {
+    "title": "Concrete Block",
+    "keywords": [
+      "concrete",
+      "cement",
+      "plaster"
+    ],
+    "uniform": true,
+    "material": "smooth solid-color concrete with very subtle fine pixel noise and faint tonal variation, flat and even; color follows the prompt (gray by default); no brick grid, no mortar lines, no cracks, no grass"
   }
 }

@@ -132,5 +132,226 @@
       "food"
     ],
     "visual": "small handheld food item centered in the frame: round shape for apple/berry, oval rounded shape for bread/loaf, wedge for cheese, irregular chunk for meat. Warm food palette with one small highlight pixel."
+  },
+  "armor": {
+    "title": "Armor (Helmet / Chestplate / Boots)",
+    "keywords": [
+      "armor",
+      "armour",
+      "helmet",
+      "chestplate",
+      "breastplate",
+      "boots",
+      "greaves",
+      "gauntlet",
+      "pauldron"
+    ],
+    "visual": "a single wearable armor piece centered in the frame: rounded helmet, broad chestplate, or paired boots; symmetric silhouette with a clear metal or leather material read. Metal follows the prompt (iron gray, gold yellow, leather brown)."
+  },
+  "shield": {
+    "title": "Shield",
+    "keywords": [
+      "shield",
+      "buckler",
+      "kite shield"
+    ],
+    "visual": "a round, kite, or heater-shaped shield seen face-on, raised metal rim and a central boss; symmetric silhouette, plank or plated face material per the prompt."
+  },
+  "staff": {
+    "title": "Staff / Wand",
+    "keywords": [
+      "staff",
+      "wand",
+      "scepter",
+      "rod",
+      "stave"
+    ],
+    "match_all": [],
+    "visual": "a long thin magic staff or short wand pointing up-right at 45deg, a glowing gem or orb fixed at the tip with a small sparkle, plain wooden or metal shaft below."
+  },
+  "hammer": {
+    "title": "Hammer / Mallet",
+    "keywords": [
+      "hammer",
+      "mallet",
+      "warhammer"
+    ],
+    "visual": "a hammer with a heavy rectangular head on top of a handle; head clearly bulkier than a pickaxe head. Same per-style orientation as other tools (top-down for Core Keeper, 45deg for Terraria, flat tile for Minecraft)."
+  },
+  "spear": {
+    "title": "Spear / Trident",
+    "keywords": [
+      "spear",
+      "lance",
+      "javelin",
+      "trident",
+      "pike",
+      "polearm"
+    ],
+    "visual": "a long shaft pointing up-right at 45deg ending in a pointed metal tip (single point for spear, three prongs for trident); thin readable silhouette."
+  },
+  "hoe": {
+    "title": "Hoe (Farming Tool)",
+    "keywords": [
+      "hoe",
+      "tiller"
+    ],
+    "visual": "a farming hoe: an angled flat blade on the end of a wooden handle, blade bent roughly 90deg to the shaft; top-down friendly silhouette for farming-sim styles."
+  },
+  "fishing_rod": {
+    "title": "Fishing Rod",
+    "keywords": [
+      "fishing",
+      "rod",
+      "fishing pole",
+      "fishing rod"
+    ],
+    "match_all": [
+      "fishing"
+    ],
+    "visual": "a slender fishing rod held diagonally with a thin line hanging from the tip and a small hook or bobber at the end; wooden or metal pole."
+  },
+  "fish": {
+    "title": "Fish",
+    "keywords": [
+      "fish",
+      "salmon",
+      "trout",
+      "cod",
+      "carp",
+      "sardine",
+      "tuna",
+      "bass"
+    ],
+    "visual": "a single side-on fish: rounded body, dorsal fin, forked tail, small dot eye; colored scales per the named species, soft highlight on the upper body."
+  },
+  "seed": {
+    "title": "Seed / Seed Packet",
+    "keywords": [
+      "seed",
+      "seeds",
+      "sapling",
+      "spore"
+    ],
+    "visual": "either a small paper seed packet with a tiny plant illustration on the front, or a cluster of a few small seeds; compact centered silhouette for farming-sim inventories."
+  },
+  "crop": {
+    "title": "Crop / Produce",
+    "keywords": [
+      "crop",
+      "wheat",
+      "carrot",
+      "potato",
+      "turnip",
+      "parsnip",
+      "corn",
+      "pumpkin",
+      "vegetable",
+      "harvest",
+      "cauliflower",
+      "melon"
+    ],
+    "visual": "a single harvested farm crop centered in the frame: long root vegetable, leafy stalk, or round produce per the prompt, with a small green leaf or stem; warm natural palette."
+  },
+  "ore": {
+    "title": "Ore / Raw Resource Chunk",
+    "keywords": [
+      "ore",
+      "nugget",
+      "raw"
+    ],
+    "match_all": [
+      "ore"
+    ],
+    "visual": "an irregular rough rock chunk with bright mineral specks of the named metal or gem embedded in a gray stone matrix; chunky silhouette, faint highlight on the specks."
+  },
+  "log_item": {
+    "title": "Log / Wood Resource",
+    "keywords": [
+      "log",
+      "timber",
+      "lumber",
+      "firewood"
+    ],
+    "match_all": [
+      "log"
+    ],
+    "visual": "a short cut log shown at a slight angle: circular ring end-grain on one face and brown bark along the side; simple two-tone brown palette."
+  },
+  "ring": {
+    "title": "Ring / Accessory",
+    "keywords": [
+      "ring",
+      "amulet",
+      "necklace",
+      "pendant",
+      "accessory",
+      "band"
+    ],
+    "visual": "a small piece of jewelry: a circular band ring with a single gem, or a pendant on a thin chain; compact centered silhouette with a bright gem highlight."
+  },
+  "bomb": {
+    "title": "Bomb / Explosive",
+    "keywords": [
+      "bomb",
+      "dynamite",
+      "explosive",
+      "grenade",
+      "tnt"
+    ],
+    "visual": "a round black bomb with a short fuse and a small lit spark at the top, or a bundle of red dynamite sticks; single bright spark highlight."
+  },
+  "arrow": {
+    "title": "Arrow / Ammo",
+    "keywords": [
+      "arrow",
+      "bolt",
+      "dart",
+      "ammo"
+    ],
+    "visual": "a single arrow pointing up-right at 45deg: pointed metal arrowhead, thin wooden shaft, and white or colored fletching feathers at the back."
+  },
+  "flower": {
+    "title": "Flower / Plant",
+    "keywords": [
+      "flower",
+      "tulip",
+      "rose",
+      "daisy",
+      "bloom",
+      "blossom",
+      "sunflower"
+    ],
+    "visual": "a single small flower viewed from the side or front: a colored bloom on a thin green stem with one or two leaves; bright petal color per the prompt."
+  },
+  "bucket": {
+    "title": "Bucket / Pail",
+    "keywords": [
+      "bucket",
+      "pail",
+      "watering can",
+      "can"
+    ],
+    "visual": "a metal or wooden bucket with a curved handle on top, slightly tapered body; if a watering can, add a curved spout on one side. Contents (water, milk) tint the interior."
+  },
+  "egg": {
+    "title": "Egg",
+    "keywords": [
+      "egg"
+    ],
+    "visual": "a single smooth oval egg standing upright, soft top highlight and a subtle bottom shadow; shell color per the prompt (white, brown, speckled)."
+  },
+  "gun": {
+    "title": "Gun / Firearm",
+    "keywords": [
+      "gun",
+      "pistol",
+      "rifle",
+      "firearm",
+      "blaster",
+      "musket",
+      "revolver"
+    ],
+    "visual": "a side-on firearm pointing right: wooden or metal grip at the back, a barrel extending forward, simple trigger guard; strong dark outline for Terraria-like styles."
   }
 }
