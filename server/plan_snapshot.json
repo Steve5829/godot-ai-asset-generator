@@ -110,11 +110,11 @@
   },
   "fallback_icon": {
     "asset_type": "icon",
-    "description": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline.",
+    "description": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge.",
     "descriptions": {
-      "front": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline., front face only, seamless tile material, viewed straight-on as the vertical face",
-      "primary": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline.",
-      "top": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline., top face only, seamless tile material, viewed straight-on as the top surface"
+      "front": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge., front face only, seamless tile material, viewed straight-on as the vertical face",
+      "primary": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge.",
+      "top": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge., top face only, seamless tile material, viewed straight-on as the top surface"
     },
     "filename_stub": "icon_none_iron_sword",
     "has_reference_context": false,

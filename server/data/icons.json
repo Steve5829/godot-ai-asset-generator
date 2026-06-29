@@ -8,14 +8,14 @@
       "broadsword",
       "scimitar"
     ],
-    "visual": "long pointed blade with a crossguard and grip; centered with the blade taking up most of the canvas. Per-style orientation: Terraria 45deg up-right with strong dark outline; Core Keeper top-down silhouette with soft no-outline shading; Minecraft flat 16x16 diagonal blade with no outline."
+    "visual": "long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge"
   },
   "pickaxe": {
     "title": "Pickaxe",
     "keywords": [
       "pickaxe"
     ],
-    "visual": "mining pickaxe with a curved double-pronged head on top and a short straight handle below. Per-style orientation: Core Keeper top-down view; Terraria diagonal 45deg with dark outline; Minecraft flat 16x16 with a diagonal T-shape head-and-stick silhouette and no outline."
+    "visual": "mining pickaxe with a curved double-pronged head on top and a short straight handle below, forming a clear T-shape; head and handle in contrasting materials"
   },
   "axe_tool": {
     "title": "Axe / Hatchet",
@@ -27,7 +27,7 @@
     "match_all": [
       "axe"
     ],
-    "visual": "axe with a wedge-shaped head on top of a short handle; head clearly wider than the handle. Same per-style orientation rules as a pickaxe (top-down for Core Keeper, 45deg for Terraria, flat tile for Minecraft)."
+    "visual": "axe with a wedge-shaped head on top of a short handle, head clearly wider than the handle"
   },
   "shovel": {
     "title": "Shovel",
@@ -176,7 +176,7 @@
       "mallet",
       "warhammer"
     ],
-    "visual": "a hammer with a heavy rectangular head on top of a handle; head clearly bulkier than a pickaxe head. Same per-style orientation as other tools (top-down for Core Keeper, 45deg for Terraria, flat tile for Minecraft)."
+    "visual": "hammer with a heavy rectangular head on top of a handle, head clearly bulkier than a pickaxe head"
   },
   "spear": {
     "title": "Spear / Trident",
@@ -352,6 +352,6 @@
       "musket",
       "revolver"
     ],
-    "visual": "a side-on firearm pointing right: wooden or metal grip at the back, a barrel extending forward, simple trigger guard; strong dark outline for Terraria-like styles."
+    "visual": "side-on firearm: wooden or metal grip at the back, a barrel extending forward, simple trigger guard"
   }
 }
