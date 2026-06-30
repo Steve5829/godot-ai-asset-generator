@@ -406,6 +406,15 @@ def _safe_stem(text: str, fallback: str) -> str:
     return cleaned[:80]
 
 
+def _filename_with_mode(stub: str, generation_mode: str) -> str:
+    """Tag non-auto modes onto the filename so each mode saves a distinct file
+    instead of overwriting the previous mode's output for the same prompt."""
+    mode = _normalize_generation_mode(generation_mode)
+    if mode == "auto" or stub.endswith("_" + mode):
+        return stub
+    return _safe_stem("%s_%s" % (stub, mode), stub)
+
+
 def _clamp_size(value: int, default: int) -> int:
     try:
         parsed = int(value)
@@ -1506,7 +1515,10 @@ def _fallback_generation_plan(
         },
         "width": fallback_dimensions["width"],
         "height": fallback_dimensions["height"],
-        "filename_stub": _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
+        "filename_stub": _filename_with_mode(
+            _safe_stem("%s_%s_%s" % (normalized_asset_type, normalized_style, prompt), "generated_asset"),
+            normalized_mode,
+        ),
         "no_background": bool(asset_spec["no_background"]),
         "asset_type": normalized_asset_type,
         "workflow": workflow,
@@ -1633,7 +1645,10 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         },
         "width": _clamp_size(plan.get("width"), fallback_dimensions["width"]),
         "height": _clamp_size(plan.get("height"), fallback_dimensions["height"]),
-        "filename_stub": _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
+        "filename_stub": _filename_with_mode(
+            _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
+            generation_mode,
+        ),
         "no_background": bool(plan.get("no_background", asset_spec["no_background"])),
         "asset_type": planned_asset_type,
         "workflow": workflow,
