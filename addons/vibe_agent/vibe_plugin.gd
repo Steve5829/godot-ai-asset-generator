@@ -14,10 +14,10 @@ const GENERATION_PROVIDER_OPTIONS := [
 	{"value": "openai_image", "label": "GPT Image"},
 ]
 const GENERATION_MODE_OPTIONS := [
-	{"value": "auto", "label": "Auto (smart)"},
-	{"value": "plain", "label": "Plain text"},
-	{"value": "reference", "label": "Reference analysis"},
-	{"value": "style_transfer", "label": "Style transfer"},
+	{"value": "auto", "label": "Auto (smart)", "description": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons."},
+	{"value": "plain", "label": "Plain text", "description": "Generates only from the text prompt and the built-in style/material descriptions. No reference images used."},
+	{"value": "reference", "label": "Reference analysis", "description": "Looks at matching reference images, summarizes their style in words, and adds that to the prompt."},
+	{"value": "style_transfer", "label": "Style transfer", "description": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. Applies to every asset type."},
 ]
 const ALLOWED_METHODS := {
 	"add_child": false,
@@ -84,6 +84,7 @@ var generation_settings_container: VBoxContainer
 var style_target_select: OptionButton
 var provider_select: OptionButton
 var mode_select: OptionButton
+var mode_description_label: Label
 var prompt_input: TextEdit
 
 
@@ -193,7 +194,14 @@ func _create_prompt_dialog():
 	mode_select = OptionButton.new()
 	mode_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_populate_option_button(mode_select, mode_options)
+	mode_select.item_selected.connect(_on_mode_selected)
 	generation_settings_container.add_child(mode_select)
+
+	mode_description_label = Label.new()
+	mode_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mode_description_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	generation_settings_container.add_child(mode_description_label)
+	_update_mode_description()
 
 	prompt_input = TextEdit.new()
 	prompt_input.custom_minimum_size = Vector2(520, 180)
@@ -216,6 +224,20 @@ func _populate_option_button(button: OptionButton, options: Array):
 		button.select(0)
 
 
+func _on_mode_selected(_index: int):
+	_update_mode_description()
+
+
+func _update_mode_description():
+	if mode_description_label == null or mode_select == null:
+		return
+	var selected = mode_select.get_selected()
+	if selected < 0 or selected >= mode_options.size():
+		mode_description_label.text = ""
+		return
+	mode_description_label.text = String(mode_options[selected].get("description", ""))
+
+
 func _fetch_generation_options():
 	if options_http_request == null:
 		return
@@ -236,7 +258,7 @@ func _normalize_option_list(raw, fallback: Array) -> Array:
 		var value = String(entry.get("value", ""))
 		if value.is_empty():
 			continue
-		normalized.append({"value": value, "label": String(entry.get("label", value))})
+		normalized.append({"value": value, "label": String(entry.get("label", value)), "description": String(entry.get("description", ""))})
 	if normalized.is_empty():
 		return fallback
 	return normalized
@@ -260,6 +282,7 @@ func _on_options_completed(result: int, response_code: int, _headers: PackedStri
 		_populate_option_button(provider_select, provider_options)
 	if mode_select:
 		_populate_option_button(mode_select, mode_options)
+		_update_mode_description()
 
 
 func _selected_option_value(button: OptionButton, fallback: String) -> String:
@@ -364,6 +387,7 @@ func _open_prompt_dialog(kind: String, summary: String, example: String, confirm
 			provider_select.select(0)
 		if mode_select and mode_select.item_count > 0:
 			mode_select.select(0)
+		_update_mode_description()
 	prompt_input.clear()
 	var popup_size = Vector2i(560, 320)
 	if kind == "generate":

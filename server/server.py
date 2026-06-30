@@ -167,6 +167,12 @@ GENERATION_MODE_LABELS = {
     "reference": "Reference analysis",
     "style_transfer": "Style transfer",
 }
+GENERATION_MODE_DESCRIPTIONS = {
+    "auto": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons.",
+    "plain": "Generates only from the text prompt and the built-in style/material descriptions. No reference images used.",
+    "reference": "Looks at matching reference images, summarizes their style in words, and adds that to the prompt.",
+    "style_transfer": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. Applies to every asset type.",
+}
 BLOCK_MATERIAL_PROFILES: Dict[str, Dict[str, Any]] = _load_data_table("materials.json")
 
 
@@ -2739,7 +2745,10 @@ async def generation_options() -> Dict[str, Any]:
         for key in sorted(SUPPORTED_GENERATION_PROVIDERS)
     ]
     mode_order = ["auto", "plain", "reference", "style_transfer"]
-    modes = [{"value": key, "label": GENERATION_MODE_LABELS[key]} for key in mode_order]
+    modes = [
+        {"value": key, "label": GENERATION_MODE_LABELS[key], "description": GENERATION_MODE_DESCRIPTIONS[key]}
+        for key in mode_order
+    ]
     return {"status": "success", "styles": styles, "providers": providers, "modes": modes}
 
 
