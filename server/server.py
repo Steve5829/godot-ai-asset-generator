@@ -82,6 +82,8 @@ REFERENCE_IMAGE_MAX_EDGE = 512
 RESAMPLING = getattr(Image, "Resampling", Image)
 PIXELLAB_MIN_IMAGE_SIZE = 32
 PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
+PIXELLAB_STYLE_STRENGTH = float(os.getenv("PIXELLAB_STYLE_STRENGTH") or 45)
+PIXELLAB_STYLE_IMAGE_MAX_EDGE = 128
 REFERENCE_IMAGE_SYNONYM_GROUPS = (
     {"potion", "healing", "bottle", "vial", "flask", "elixir"},
     {"sword", "blade", "weapon"},
@@ -580,6 +582,24 @@ def _select_reference_images(style_target: str, asset_type: str, prompt: str = "
     if not candidates and normalized_asset_type == "icon":
         candidates = _list_reference_images(style_root / "icon")
     return _rank_reference_images(candidates, prompt, normalized_asset_type)[:MAX_REFERENCE_IMAGES]
+
+
+def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Optional[Dict[str, Any]]:
+    paths = _select_reference_images(style_target, asset_type, prompt)
+    if not paths:
+        return None
+    path = paths[0]
+    try:
+        with Image.open(path) as image:
+            converted = image.convert("RGBA")
+            if max(converted.size) > PIXELLAB_STYLE_IMAGE_MAX_EDGE:
+                converted.thumbnail((PIXELLAB_STYLE_IMAGE_MAX_EDGE, PIXELLAB_STYLE_IMAGE_MAX_EDGE), RESAMPLING.LANCZOS)
+            buffer = io.BytesIO()
+            converted.save(buffer, format="PNG")
+    except Exception as exc:
+        print("Could not load style image %s: %s" % (path, exc))
+        return None
+    return {"type": "base64", "base64": base64.b64encode(buffer.getvalue()).decode(), "format": "png"}
 
 
 def _is_neutral_gray_pixel(red: int, green: int, blue: int, alpha: int, min_value: int = 170) -> bool:
@@ -1595,20 +1615,39 @@ def _pixellab_error_detail(response: requests.Response, width: int, height: int,
     return detail
 
 
-def _generate_with_pixellab(description: str, width: int, height: int, no_background: bool) -> bytes:
+def _generate_with_pixellab(
+    description: str,
+    width: int,
+    height: int,
+    no_background: bool,
+    style_image: Optional[Dict[str, Any]] = None,
+) -> bytes:
     if not PIXELLAB_API_KEY:
         raise ValueError("PIXELLAB_API_KEY is not configured")
+
+    if style_image:
+        endpoint = "generate-image-bitforge"
+        body = {
+            "description": description,
+            "image_size": {"width": width, "height": height},
+            "no_background": no_background,
+            "style_image": style_image,
+            "style_strength": PIXELLAB_STYLE_STRENGTH,
+        }
+    else:
+        endpoint = "generate-image-pixflux"
+        body = {
+            "description": description,
+            "image_size": {"width": width, "height": height},
+            "no_background": no_background,
+        }
 
     max_attempts = 2
     for attempt in range(1, max_attempts + 1):
         response = requests.post(
-            "https://api.pixellab.ai/v1/generate-image-pixflux",
+            "https://api.pixellab.ai/v1/" + endpoint,
             headers={"Authorization": "Bearer " + PIXELLAB_API_KEY},
-            json={
-                "description": description,
-                "image_size": {"width": width, "height": height},
-                "no_background": no_background,
-            },
+            json=body,
             timeout=(10, 180),
         )
         try:
@@ -1716,7 +1755,14 @@ def _generate_with_openai_image(description: str, width: int, height: int, no_ba
     return _resize_png_bytes(_decode_openai_image_payload(data[0]), width, height)
 
 
-def _generate_with_provider(provider: str, description: str, width: int, height: int, no_background: bool) -> bytes:
+def _generate_with_provider(
+    provider: str,
+    description: str,
+    width: int,
+    height: int,
+    no_background: bool,
+    style_image: Optional[Dict[str, Any]] = None,
+) -> bytes:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
         safe_dimensions = _provider_safe_dimensions(normalized_provider, width, height)
@@ -1725,6 +1771,7 @@ def _generate_with_provider(provider: str, description: str, width: int, height:
             width=safe_dimensions["width"],
             height=safe_dimensions["height"],
             no_background=no_background,
+            style_image=style_image,
         )
         if (safe_dimensions["width"], safe_dimensions["height"]) != (width, height):
             return _resize_png_bytes(image_bytes, width, height)
@@ -1939,11 +1986,20 @@ def _compose_three_face_block(
     return composed
 
 
+def _plan_style_image(plan: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    return _pixellab_style_image(
+        str(plan.get("style_target") or "none"),
+        str(plan.get("asset_type") or "icon"),
+        str(plan.get("user_prompt") or plan.get("description") or ""),
+    )
+
+
 def _generate_block_texture_faces(
     plan: Dict[str, Any],
     provider: str,
     face_config: Dict[str, Any],
     faces: List[str],
+    style_image: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, bytes]:
     generated: Dict[str, bytes] = {}
     if not _block_requires_multi_face_generation(plan) and faces:
@@ -1965,6 +2021,7 @@ def _generate_block_texture_faces(
             width=source_dimensions["width"],
             height=source_dimensions["height"],
             no_background=False,
+            style_image=style_image,
         )
         for face in faces:
             generated[face] = material_bytes
@@ -1984,6 +2041,7 @@ def _generate_block_texture_faces(
             width=source_dimensions["width"],
             height=source_dimensions["height"],
             no_background=False,
+            style_image=style_image,
         )
     return generated
 
@@ -2047,6 +2105,9 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
     provider = _normalize_generation_provider(plan.get("provider"))
     filename_stub = _safe_stem(str(plan.get("filename_stub") or "generated_asset"), "generated_asset")
     postprocess = plan.get("postprocess") if isinstance(plan.get("postprocess"), dict) else {}
+    style_image = _plan_style_image(plan) if provider == "pixellab" else None
+    if style_image:
+        print("Using style reference image for PixelLab generation")
     outputs: List[Dict[str, Any]] = []
 
     if workflow in {"block_texture_two_face", "block_texture_three_face"}:
@@ -2067,7 +2128,7 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         }
         if workflow == "block_texture_three_face":
             faces = ["top", "front", "side"]
-            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces)
+            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces, style_image)
             if face_config["compose_mode"] == "isometric":
                 composed = _compose_isometric_three_face_block(
                     face_bytes["top"],
@@ -2084,7 +2145,7 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
                 )
         else:
             faces = ["top", "front"]
-            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces)
+            face_bytes = _generate_block_texture_faces(plan, provider, face_config, faces, style_image)
             composed = _compose_two_face_block(face_bytes["top"], face_bytes["front"], face_config)
         return _save_block_texture_outputs(composed, face_config, target_folder, filename_stub, faces, face_bytes)
 
@@ -2094,6 +2155,7 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         width=plan["width"],
         height=plan["height"],
         no_background=bool(plan["no_background"]),
+        style_image=style_image,
     )
     full_path = target_folder / ("%s.png" % filename_stub)
     _save_generated_png(image_bytes, full_path)
