@@ -408,11 +408,28 @@ def _provider_safe_dimensions(provider: str, width: int, height: int) -> Dict[st
     return {"width": safe_width, "height": safe_height}
 
 
-def _block_face_source_dimensions(provider: str, final_width: int, face_height: int) -> Dict[str, int]:
+def _block_face_source_dimensions(
+    provider: str,
+    final_width: int,
+    face_height: int,
+    style_native: bool = False,
+) -> Dict[str, int]:
     target_width = _clamp_size(final_width, 32)
     target_height = _clamp_size(face_height, 32)
     if _normalize_generation_provider(provider) != "pixellab":
         return {"width": target_width, "height": target_height}
+
+    if style_native:
+        # Bitforge (style transfer) keeps pixels crisp when the source is an exact
+        # integer multiple of the final face, clamped up to bitforge's 32px minimum.
+        multiplier = 1
+        while min(target_width, target_height) * multiplier < 32:
+            multiplier += 1
+        return _provider_safe_dimensions(
+            provider,
+            min(400, target_width * multiplier),
+            min(400, target_height * multiplier),
+        )
 
     source_width = min(400, max(PIXELLAB_BLOCK_SOURCE_MIN_WIDTH, target_width))
     source_height = int(round(float(source_width) * float(target_height) / float(max(1, target_width))))
@@ -2008,12 +2025,14 @@ def _generate_block_texture_faces(
     style_image: Optional[Image.Image] = None,
 ) -> Dict[str, bytes]:
     generated: Dict[str, bytes] = {}
+    style_native = style_image is not None
     if not _block_requires_multi_face_generation(plan) and faces:
         lead_face = faces[0]
         source_dimensions = _block_face_source_dimensions(
             provider,
             int(face_config["final_width"]),
             int(face_config.get("%s_height" % lead_face) or face_config.get("front_height") or 16),
+            style_native,
         )
         description = _strict_block_face_description(
             plan,
@@ -2035,7 +2054,7 @@ def _generate_block_texture_faces(
 
     for face in faces:
         face_height = int(face_config.get("%s_height" % face) or face_config.get("front_height") or 16)
-        source_dimensions = _block_face_source_dimensions(provider, int(face_config["final_width"]), face_height)
+        source_dimensions = _block_face_source_dimensions(provider, int(face_config["final_width"]), face_height, style_native)
         generated[face] = _generate_with_provider(
             provider=provider,
             description=_strict_block_face_description(
