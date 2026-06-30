@@ -65,6 +65,25 @@ git history.
 - **Demo**: pick Style transfer, generate `diamond block` (minecraft); the backend
   log shows `Using style reference image for PixelLab generation`.
 
+#### Observed failure mode: `axe` (minecraft, Style transfer) → blurry green block
+
+A concrete example of why Auto excludes icons from style transfer. Three causes stack:
+
+1. **Bad reference image** — `reference_images/minecraft/icon/axe.png` is 310x338,
+   fully opaque, ~76% near-white background. It is a large render, not a clean
+   pixel-art sprite, so it is garbage input for style transfer.
+2. **Wrong tool for icons** — bitforge fills the canvas with the reference's look;
+   for an icon it erases the subject silhouette (the axe shape) into a filled block.
+3. **No palette cleanup on icons** — the palette-snap step that de-muddies output
+   only runs on block faces, not the single-image (icon) path, so the soft bitforge
+   colors stay.
+
+The green tint is not from the reference (which is white/gold) — under heavy style
+strength plus the transparent-background-vs-opaque-reference conflict, bitforge
+collapses into a muddy mid-tone. Net: bad reference x wrong tool x no cleanup =
+blurry green block. Useful as the "why not" demo against applying style transfer to
+icons.
+
 ### 4. Auto — smart hybrid (current default)
 - **Idea**: combines the above, choosing the best method per asset type.
 - **Key commits**:
