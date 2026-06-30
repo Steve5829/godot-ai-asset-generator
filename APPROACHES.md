@@ -10,6 +10,26 @@ git history.
 
 ---
 
+## Supported asset types
+
+The asset type is inferred automatically from the prompt (no manual selection).
+Generation modes apply on top of whichever type is chosen.
+
+| Asset type | What it produces | Default size | Transparent bg | Notes |
+|---|---|---|---|---|
+| `icon` | A single inventory/UI item or static sprite | 128x128 | yes | Default when nothing else matches |
+| `block_texture` | A tileable block, composed from per-face textures | 64x96 source | no | Layout per style: Core Keeper / Terraria / Stardew = two-face, Minecraft = three-face isometric |
+| `ground_atlas` | One continuous tileable terrain swatch | 128x128 | no | No grid lines or tile panels |
+| `spritesheet` | A grid of animation frames | 256x256 | yes | Triggered by "spritesheet" / "animation" / "walk/run cycle" |
+| `reference_scene` | A building / structure / environment concept | 400x400 | no | Triggered by house / castle / tower / ruins, etc. |
+
+Routing keywords: a prompt containing `block` → `block_texture`; `atlas` / `tilemap`
+/ `ground` / `floor` / `terrain` → `ground_atlas`; `spritesheet` / `animation` →
+`spritesheet`; building words → `reference_scene`; otherwise → `icon`. Explicit
+type words (`atlas`, `block`, `spritesheet`) override the model's guess.
+
+---
+
 ## The four selectable modes (built into the plugin)
 
 | Mode | What it does | Best for | Approach stage |
