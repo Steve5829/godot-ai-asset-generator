@@ -168,10 +168,10 @@ GENERATION_MODE_LABELS = {
     "style_transfer": "Style transfer",
 }
 GENERATION_MODE_DESCRIPTIONS = {
-    "auto": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons.",
+    "auto": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons. Style transfer is PixelLab only; with GPT Image it falls back to text.",
     "plain": "Generates only from the text prompt and the built-in style/material descriptions. No reference images used.",
     "reference": "Looks at matching reference images, summarizes their style in words, and adds that to the prompt.",
-    "style_transfer": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. Applies to every asset type.",
+    "style_transfer": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. PixelLab only — not supported with GPT Image yet.",
 }
 BLOCK_MATERIAL_PROFILES: Dict[str, Dict[str, Any]] = _load_data_table("materials.json")
 

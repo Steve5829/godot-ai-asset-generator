@@ -15,6 +15,20 @@ This repository is the upstreamed codebase for the current prototype. The core p
 - Use structured planning instead of arbitrary code execution for safer editor actions.
 - Dispatch supported node operations through a guarded, reflection-style action layer in the plugin.
 
+## Generation Modes
+
+The Generate dialog offers a **Generation Mode** dropdown to choose how style is applied:
+
+- **Auto (smart)** — picks the best method per asset type.
+- **Plain text** — text prompt plus built-in descriptions only, no reference images.
+- **Reference analysis** — vision-summarized reference traits added to the prompt.
+- **Style transfer** — feeds a reference image into PixelLab (bitforge) for true style transfer.
+
+> Note: **Style transfer (and the style-transfer step inside Auto) is currently PixelLab only.**
+> GPT Image does not support it yet; with GPT Image those modes fall back to text generation.
+
+See [APPROACHES.md](APPROACHES.md) for how each mode maps to the project's development stages.
+
 ## Repository Layout
 
 - `addons/vibe_agent/`: Godot editor plugin written in GDScript.

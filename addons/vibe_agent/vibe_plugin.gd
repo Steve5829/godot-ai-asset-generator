@@ -14,10 +14,10 @@ const GENERATION_PROVIDER_OPTIONS := [
 	{"value": "openai_image", "label": "GPT Image"},
 ]
 const GENERATION_MODE_OPTIONS := [
-	{"value": "auto", "label": "Auto (smart)", "description": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons."},
+	{"value": "auto", "label": "Auto (smart)", "description": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons. Style transfer is PixelLab only; with GPT Image it falls back to text."},
 	{"value": "plain", "label": "Plain text", "description": "Generates only from the text prompt and the built-in style/material descriptions. No reference images used."},
 	{"value": "reference", "label": "Reference analysis", "description": "Looks at matching reference images, summarizes their style in words, and adds that to the prompt."},
-	{"value": "style_transfer", "label": "Style transfer", "description": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. Applies to every asset type."},
+	{"value": "style_transfer", "label": "Style transfer", "description": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. PixelLab only — not supported with GPT Image yet."},
 ]
 const ALLOWED_METHODS := {
 	"add_child": false,
