@@ -84,6 +84,7 @@ PIXELLAB_MIN_IMAGE_SIZE = 32
 PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
 PIXELLAB_STYLE_STRENGTH = float(os.getenv("PIXELLAB_STYLE_STRENGTH") or 45)
 PIXELLAB_STYLE_IMAGE_MAX_EDGE = 128
+STYLE_SNAP_COLORS = int(os.getenv("STYLE_SNAP_COLORS") or 24)
 REFERENCE_IMAGE_SYNONYM_GROUPS = (
     {"potion", "healing", "bottle", "vial", "flask", "elixir"},
     {"sword", "blade", "weapon"},
@@ -1828,6 +1829,21 @@ def _png_image_from_bytes(image_bytes: bytes) -> Image.Image:
         return image.convert("RGBA")
 
 
+def _snap_pixel_palette(image_bytes: bytes, colors: int) -> bytes:
+    """Collapse soft AI in-between colors to a tight palette so the texture reads
+    as crisp pixel art instead of a muddy gradient."""
+    if colors <= 0:
+        return image_bytes
+    image = _png_image_from_bytes(image_bytes)
+    alpha = image.getchannel("A")
+    quantized = image.convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT, dither=Image.NONE)
+    result = quantized.convert("RGBA")
+    result.putalpha(alpha)
+    buffer = io.BytesIO()
+    result.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
 def _save_generated_png(image_bytes: bytes, output_path: Path) -> Dict[str, str]:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(image_bytes)
@@ -2071,6 +2087,8 @@ def _generate_block_texture_faces(
             no_background=False,
             style_image=style_image,
         )
+        if style_native:
+            material_bytes = _snap_pixel_palette(material_bytes, STYLE_SNAP_COLORS)
         for face in faces:
             generated[face] = material_bytes
         return generated
@@ -2091,6 +2109,8 @@ def _generate_block_texture_faces(
             no_background=False,
             style_image=style_image,
         )
+        if style_native:
+            generated[face] = _snap_pixel_palette(generated[face], STYLE_SNAP_COLORS)
     return generated
 
 
