@@ -601,11 +601,25 @@ def _select_reference_images(style_target: str, asset_type: str, prompt: str = "
     return _rank_reference_images(candidates, prompt, normalized_asset_type)[:MAX_REFERENCE_IMAGES]
 
 
-def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Optional[Image.Image]:
+def _best_matching_reference(style_target: str, asset_type: str, prompt: str) -> Optional[Path]:
+    """Top reference only if it actually matches the prompt, so an unrelated image
+    (e.g. a creeper for a 'zombie') never gets force-styled over the real subject."""
     paths = _select_reference_images(style_target, asset_type, prompt)
     if not paths:
         return None
-    path = paths[0]
+    prompt_tokens = _reference_tokens(prompt)
+    if not prompt_tokens:
+        return None
+    expanded = _expand_reference_tokens(prompt_tokens, asset_type)
+    if _reference_prompt_score(prompt_tokens, expanded, paths[0], asset_type) <= 0:
+        return None
+    return paths[0]
+
+
+def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Optional[Image.Image]:
+    path = _best_matching_reference(style_target, asset_type, prompt)
+    if path is None:
+        return None
     try:
         with Image.open(path) as image:
             converted = image.convert("RGBA")
@@ -2009,10 +2023,19 @@ def _compose_three_face_block(
     return composed
 
 
-def _plan_style_image(plan: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+# Style transfer replicates a material look, which suits textures but overwhelms
+# the subject of an icon/sprite (a zombie becomes a green block). Limit it to
+# material asset types; subjects keep using plain text generation.
+_STYLE_IMAGE_ASSET_TYPES = {"block_texture", "ground_atlas"}
+
+
+def _plan_style_image(plan: Dict[str, Any]) -> Optional[Image.Image]:
+    asset_type = _normalize_asset_type(plan.get("asset_type") or "icon")
+    if asset_type not in _STYLE_IMAGE_ASSET_TYPES:
+        return None
     return _pixellab_style_image(
         str(plan.get("style_target") or "none"),
-        str(plan.get("asset_type") or "icon"),
+        asset_type,
         str(plan.get("user_prompt") or plan.get("description") or ""),
     )
 
