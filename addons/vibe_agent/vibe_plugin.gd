@@ -13,6 +13,12 @@ const GENERATION_PROVIDER_OPTIONS := [
 	{"value": "pixellab", "label": "PixelLab"},
 	{"value": "openai_image", "label": "GPT Image"},
 ]
+const GENERATION_MODE_OPTIONS := [
+	{"value": "auto", "label": "Auto (smart)"},
+	{"value": "plain", "label": "Plain text"},
+	{"value": "reference", "label": "Reference analysis"},
+	{"value": "style_transfer", "label": "Style transfer"},
+]
 const ALLOWED_METHODS := {
 	"add_child": false,
 	"queue_free": false,
@@ -77,11 +83,13 @@ var prompt_example_label: Label
 var generation_settings_container: VBoxContainer
 var style_target_select: OptionButton
 var provider_select: OptionButton
+var mode_select: OptionButton
 var prompt_input: TextEdit
 
 
 var style_options: Array = GENERATION_STYLE_OPTIONS.duplicate(true)
 var provider_options: Array = GENERATION_PROVIDER_OPTIONS.duplicate(true)
+var mode_options: Array = GENERATION_MODE_OPTIONS.duplicate(true)
 
 var filesystem_create_menu
 var filesystem_asset_menu
@@ -178,6 +186,15 @@ func _create_prompt_dialog():
 	_populate_option_button(provider_select, provider_options)
 	generation_settings_container.add_child(provider_select)
 
+	var mode_label = Label.new()
+	mode_label.text = "Generation Mode"
+	generation_settings_container.add_child(mode_label)
+
+	mode_select = OptionButton.new()
+	mode_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(mode_select, mode_options)
+	generation_settings_container.add_child(mode_select)
+
 	prompt_input = TextEdit.new()
 	prompt_input.custom_minimum_size = Vector2(520, 180)
 	prompt_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -236,10 +253,13 @@ func _on_options_completed(result: int, response_code: int, _headers: PackedStri
 
 	style_options = _normalize_option_list(payload.get("styles"), style_options)
 	provider_options = _normalize_option_list(payload.get("providers"), provider_options)
+	mode_options = _normalize_option_list(payload.get("modes"), mode_options)
 	if style_target_select:
 		_populate_option_button(style_target_select, style_options)
 	if provider_select:
 		_populate_option_button(provider_select, provider_options)
+	if mode_select:
+		_populate_option_button(mode_select, mode_options)
 
 
 func _selected_option_value(button: OptionButton, fallback: String) -> String:
@@ -342,6 +362,8 @@ func _open_prompt_dialog(kind: String, summary: String, example: String, confirm
 			style_target_select.select(0)
 		if provider_select.item_count > 0:
 			provider_select.select(0)
+		if mode_select and mode_select.item_count > 0:
+			mode_select.select(0)
 	prompt_input.clear()
 	var popup_size = Vector2i(560, 320)
 	if kind == "generate":
@@ -407,6 +429,7 @@ func _on_prompt_confirmed():
 					"folder_path": String(active_dialog_context.get("folder_path", "res://")),
 					"asset_type": "auto",
 					"workflow_mode": "auto",
+					"generation_mode": _selected_option_value(mode_select, "auto"),
 					"style_target": _selected_option_value(style_target_select, "none"),
 					"provider": _selected_option_value(provider_select, "pixellab"),
 				}
@@ -463,6 +486,8 @@ func _print_request_log(request_kind: String, payload: Dictionary):
 			String(payload.get("provider", "unknown")),
 			" | style: ",
 			String(payload.get("style_target", "none")),
+			" | mode: ",
+			String(payload.get("generation_mode", "auto")),
 			" | asset_type: ",
 			String(payload.get("asset_type", "auto")),
 			" | workflow_mode: ",

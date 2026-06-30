@@ -160,6 +160,13 @@ ASSET_TYPE_SPECS = {
 }
 SUPPORTED_ASSET_TYPES = set(ASSET_TYPE_SPECS.keys())
 SUPPORTED_GENERATION_PROVIDERS = {"pixellab", "openai_image"}
+SUPPORTED_GENERATION_MODES = {"auto", "plain", "reference", "style_transfer"}
+GENERATION_MODE_LABELS = {
+    "auto": "Auto (smart)",
+    "plain": "Plain text",
+    "reference": "Reference analysis",
+    "style_transfer": "Style transfer",
+}
 BLOCK_MATERIAL_PROFILES: Dict[str, Dict[str, Any]] = _load_data_table("materials.json")
 
 
@@ -207,6 +214,7 @@ class GenerateAssetRequest(BaseModel):
     folder_path: str = "res://"
     asset_type: str = "auto"
     workflow_mode: str = "auto"
+    generation_mode: str = "auto"
     style_target: Optional[str] = "none"
     provider: str = "pixellab"
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -492,6 +500,19 @@ def _normalize_generation_provider(provider: str) -> str:
     if normalized in SUPPORTED_GENERATION_PROVIDERS:
         return normalized
     return "pixellab"
+
+
+def _normalize_generation_mode(mode: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(mode or "").strip().lower()).strip("_")
+    return normalized if normalized in SUPPORTED_GENERATION_MODES else "auto"
+
+
+def _mode_uses_reference_analysis(mode: str) -> bool:
+    return _normalize_generation_mode(mode) in {"auto", "reference"}
+
+
+def _mode_uses_style_transfer(mode: str) -> bool:
+    return _normalize_generation_mode(mode) in {"auto", "style_transfer"}
 
 
 def _asset_type_spec(asset_type: str) -> Dict[str, Any]:
@@ -1442,12 +1463,14 @@ def _fallback_generation_plan(
     provider: str,
     note: str,
     reference_context: Optional[Dict[str, Any]] = None,
+    generation_mode: str = "auto",
 ) -> Dict[str, Any]:
     normalized_asset_type = _infer_asset_type_from_prompt(prompt, asset_type)
     normalized_style = _normalize_style_target(style_target)
     normalized_provider = _normalize_generation_provider(provider)
+    normalized_mode = _normalize_generation_mode(generation_mode)
     style_context = _style_context(normalized_style)
-    if reference_context is None:
+    if reference_context is None and _mode_uses_reference_analysis(normalized_mode):
         reference_context = _build_reference_context(prompt, normalized_style, normalized_asset_type)
     default_dimensions = _default_generation_dimensions(normalized_asset_type)
     fallback_dimensions = _parse_prompt_dimensions(
@@ -1484,6 +1507,7 @@ def _fallback_generation_plan(
         "style_target": normalized_style,
         "style_context": style_context,
         "provider": normalized_provider,
+        "generation_mode": normalized_mode,
         "postprocess": postprocess,
         "outputs_expected": _workflow_expected_outputs(normalized_asset_type, postprocess, workflow),
         "notes": notes,
@@ -1498,6 +1522,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
     normalized_style = _normalize_style_target(request.style_target)
     normalized_provider = _normalize_generation_provider(request.provider)
     workflow_mode = _normalize_workflow_mode(request.workflow_mode)
+    generation_mode = _normalize_generation_mode(request.generation_mode)
     fallback = _fallback_generation_plan(
         request.prompt,
         requested_asset_type,
@@ -1505,6 +1530,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         normalized_style,
         normalized_provider,
         "Used fallback workflow plan before LLM planning completed.",
+        generation_mode=generation_mode,
     )
 
     failure_reason = ""
@@ -1575,13 +1601,16 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         postprocess = _coerce_postprocess_config(planned_asset_type, postprocess, fallback_postprocess)
     descriptions = plan.get("descriptions") if isinstance(plan.get("descriptions"), dict) else {}
     raw_description = str(plan.get("description") or descriptions.get("primary") or fallback["description"]).strip()
-    reference_context = _resolve_reference_context(
-        request.prompt,
-        normalized_style,
-        planned_asset_type,
-        fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None,
-        _normalize_asset_type(fallback.get("asset_type") or "icon"),
-    )
+    if _mode_uses_reference_analysis(generation_mode):
+        reference_context = _resolve_reference_context(
+            request.prompt,
+            normalized_style,
+            planned_asset_type,
+            fallback.get("reference_context") if isinstance(fallback.get("reference_context"), dict) else None,
+            _normalize_asset_type(fallback.get("asset_type") or "icon"),
+        )
+    else:
+        reference_context = None
     primary_description = _enrich_description(raw_description, request.prompt, planned_asset_type, normalized_style, reference_context)
     notes = plan.get("notes") if isinstance(plan.get("notes"), list) else ["Used LLM-generated workflow plan."]
     if reference_context and reference_context.get("failure"):
@@ -1605,6 +1634,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         "style_target": normalized_style,
         "style_context": fallback["style_context"],
         "provider": normalized_provider,
+        "generation_mode": generation_mode,
         "postprocess": postprocess,
         "outputs_expected": plan.get("outputs_expected") if isinstance(plan.get("outputs_expected"), list) else _workflow_expected_outputs(planned_asset_type, postprocess, workflow),
         "notes": notes,
@@ -1628,6 +1658,7 @@ def _provider_rejection_fallback_plan(
         provider,
         "Used fallback generation plan after provider rejected the planned payload.",
         reference_context=reference_context,
+        generation_mode=request.generation_mode,
     )
 
 
@@ -2046,8 +2077,13 @@ _STYLE_IMAGE_ASSET_TYPES = {"block_texture", "ground_atlas"}
 
 
 def _plan_style_image(plan: Dict[str, Any]) -> Optional[Image.Image]:
+    mode = _normalize_generation_mode(plan.get("generation_mode"))
+    if not _mode_uses_style_transfer(mode):
+        return None
     asset_type = _normalize_asset_type(plan.get("asset_type") or "icon")
-    if asset_type not in _STYLE_IMAGE_ASSET_TYPES:
+    # Auto stays conservative (material types only); an explicit style_transfer
+    # request applies it to every type so the approach can be compared head to head.
+    if mode == "auto" and asset_type not in _STYLE_IMAGE_ASSET_TYPES:
         return None
     return _pixellab_style_image(
         str(plan.get("style_target") or "none"),
@@ -2702,7 +2738,9 @@ async def generation_options() -> Dict[str, Any]:
         {"value": key, "label": _PROVIDER_LABELS.get(key, key.replace("_", " ").title())}
         for key in sorted(SUPPORTED_GENERATION_PROVIDERS)
     ]
-    return {"status": "success", "styles": styles, "providers": providers}
+    mode_order = ["auto", "plain", "reference", "style_transfer"]
+    modes = [{"value": key, "label": GENERATION_MODE_LABELS[key]} for key in mode_order]
+    return {"status": "success", "styles": styles, "providers": providers, "modes": modes}
 
 
 if __name__ == "__main__":
