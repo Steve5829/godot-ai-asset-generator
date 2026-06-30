@@ -584,7 +584,7 @@ def _select_reference_images(style_target: str, asset_type: str, prompt: str = "
     return _rank_reference_images(candidates, prompt, normalized_asset_type)[:MAX_REFERENCE_IMAGES]
 
 
-def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Optional[Dict[str, Any]]:
+def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Optional[Image.Image]:
     paths = _select_reference_images(style_target, asset_type, prompt)
     if not paths:
         return None
@@ -594,11 +594,17 @@ def _pixellab_style_image(style_target: str, asset_type: str, prompt: str) -> Op
             converted = image.convert("RGBA")
             if max(converted.size) > PIXELLAB_STYLE_IMAGE_MAX_EDGE:
                 converted.thumbnail((PIXELLAB_STYLE_IMAGE_MAX_EDGE, PIXELLAB_STYLE_IMAGE_MAX_EDGE), RESAMPLING.LANCZOS)
-            buffer = io.BytesIO()
-            converted.save(buffer, format="PNG")
+            return converted.copy()
     except Exception as exc:
         print("Could not load style image %s: %s" % (path, exc))
         return None
+
+
+def _encode_style_image(image: Image.Image, width: int, height: int) -> Dict[str, Any]:
+    """PixelLab bitforge requires the style image to match the output size exactly."""
+    resized = image.resize((width, height), RESAMPLING.NEAREST)
+    buffer = io.BytesIO()
+    resized.save(buffer, format="PNG")
     return {"type": "base64", "base64": base64.b64encode(buffer.getvalue()).decode(), "format": "png"}
 
 
@@ -1620,18 +1626,18 @@ def _generate_with_pixellab(
     width: int,
     height: int,
     no_background: bool,
-    style_image: Optional[Dict[str, Any]] = None,
+    style_image: Optional[Image.Image] = None,
 ) -> bytes:
     if not PIXELLAB_API_KEY:
         raise ValueError("PIXELLAB_API_KEY is not configured")
 
-    if style_image:
+    if style_image is not None:
         endpoint = "generate-image-bitforge"
         body = {
             "description": description,
             "image_size": {"width": width, "height": height},
             "no_background": no_background,
-            "style_image": style_image,
+            "style_image": _encode_style_image(style_image, width, height),
             "style_strength": PIXELLAB_STYLE_STRENGTH,
         }
     else:
@@ -1761,7 +1767,7 @@ def _generate_with_provider(
     width: int,
     height: int,
     no_background: bool,
-    style_image: Optional[Dict[str, Any]] = None,
+    style_image: Optional[Image.Image] = None,
 ) -> bytes:
     normalized_provider = _normalize_generation_provider(provider)
     if normalized_provider == "pixellab":
@@ -1999,7 +2005,7 @@ def _generate_block_texture_faces(
     provider: str,
     face_config: Dict[str, Any],
     faces: List[str],
-    style_image: Optional[Dict[str, Any]] = None,
+    style_image: Optional[Image.Image] = None,
 ) -> Dict[str, bytes]:
     generated: Dict[str, bytes] = {}
     if not _block_requires_multi_face_generation(plan) and faces:
@@ -2106,7 +2112,7 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
     filename_stub = _safe_stem(str(plan.get("filename_stub") or "generated_asset"), "generated_asset")
     postprocess = plan.get("postprocess") if isinstance(plan.get("postprocess"), dict) else {}
     style_image = _plan_style_image(plan) if provider == "pixellab" else None
-    if style_image:
+    if style_image is not None:
         print("Using style reference image for PixelLab generation")
     outputs: List[Dict[str, Any]] = []
 
