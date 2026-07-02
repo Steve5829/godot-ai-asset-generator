@@ -1,0 +1,230 @@
+{
+  "explicit_atlas_over_llm": {
+    "asset_type": "ground_atlas",
+    "description": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+    "descriptions": {
+      "front": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., front face only, vertical side material",
+      "primary": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+      "side": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., side face only, vertical side material",
+      "top": "a city. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., top face only, seamless tile material"
+    },
+    "filename_stub": "ground_atlas_none_an_atlas_of_city",
+    "has_reference_context": false,
+    "height": 128,
+    "no_background": false,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {
+      "slice": false,
+      "tile_height": 32,
+      "tile_width": 32
+    },
+    "style_target": "none",
+    "width": 128,
+    "workflow": "ground_atlas"
+  },
+  "explicit_spritesheet_over_llm": {
+    "asset_type": "spritesheet",
+    "description": "a goblin",
+    "descriptions": {
+      "front": "a goblin, front face only, vertical side material",
+      "primary": "a goblin",
+      "side": "a goblin, side face only, vertical side material",
+      "top": "a goblin, top face only, seamless tile material"
+    },
+    "filename_stub": "spritesheet_none_goblin_walk_spritesheet",
+    "has_reference_context": false,
+    "height": 256,
+    "no_background": true,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {
+      "columns": 4,
+      "crop_cells": false,
+      "rows": 4
+    },
+    "style_target": "none",
+    "width": 256,
+    "workflow": "spritesheet"
+  },
+  "fallback_atlas": {
+    "asset_type": "ground_atlas",
+    "description": "forest ground. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+    "descriptions": {
+      "front": "forest ground. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., front face only, seamless tile material, viewed straight-on as the vertical face",
+      "primary": "forest ground. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model.",
+      "top": "forest ground. Generate as a single continuous top-down terrain material texture swatch. Render one unbroken image first; any slicing or cropping into tiles happens after generation by code, not in the image. Do not pre-divide the image. Fill the entire image with tileable material variation. Do not create a composed forest scene, camera view, horizon, background, path, road, large tree, trunk, character, building, or single focal object. Do not draw grid lines, individual tile panels, collage layouts, 2x2 or 3x3 layouts, crosses, tile borders, seams, cell divisions, cell outlines, or visible tile separators; tile boundaries should not be drawn by the model., top face only, seamless tile material, viewed straight-on as the top surface"
+    },
+    "filename_stub": "ground_atlas_core_keeper_forest_ground",
+    "has_reference_context": false,
+    "height": 128,
+    "no_background": false,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "fallback",
+    "postprocess": {
+      "slice": false,
+      "tile_height": 32,
+      "tile_width": 32
+    },
+    "style_target": "core_keeper",
+    "width": 128,
+    "workflow": "ground_atlas"
+  },
+  "fallback_block": {
+    "asset_type": "block_texture",
+    "description": "obsidian block",
+    "descriptions": {
+      "front": "obsidian block, front face only, seamless tile material, viewed straight-on as the vertical face",
+      "primary": "obsidian block",
+      "top": "obsidian block, top face only, seamless tile material, viewed straight-on as the top surface"
+    },
+    "filename_stub": "block_texture_core_keeper_obsidian_block",
+    "has_reference_context": false,
+    "height": 96,
+    "no_background": false,
+    "outputs_expected": [
+      "block_texture",
+      "top_face_source",
+      "front_face_source",
+      "side_face_source"
+    ],
+    "planning_source": "fallback",
+    "postprocess": {
+      "compose_mode": "vertical_strip",
+      "final_width": 32,
+      "front_height": 32,
+      "output_height": 48,
+      "output_width": 32,
+      "side_height": 16,
+      "top_height": 16
+    },
+    "style_target": "core_keeper",
+    "width": 64,
+    "workflow": "block_texture_two_face"
+  },
+  "fallback_icon": {
+    "asset_type": "icon",
+    "description": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge.",
+    "descriptions": {
+      "front": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge., front face only, seamless tile material, viewed straight-on as the vertical face",
+      "primary": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge.",
+      "top": "iron sword. Canonical visual reference for Sword: long pointed blade with a crossguard and grip, centered with the blade taking up most of the canvas; thin readable silhouette with a single highlight along the edge., top face only, seamless tile material, viewed straight-on as the top surface"
+    },
+    "filename_stub": "icon_none_iron_sword",
+    "has_reference_context": false,
+    "height": 128,
+    "no_background": true,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "fallback",
+    "postprocess": {},
+    "style_target": "none",
+    "width": 128,
+    "workflow": "single_image"
+  },
+  "fallback_scene": {
+    "asset_type": "reference_scene",
+    "description": "stone house",
+    "descriptions": {
+      "front": "stone house, front face only, seamless tile material, viewed straight-on as the vertical face",
+      "primary": "stone house",
+      "top": "stone house, top face only, seamless tile material, viewed straight-on as the top surface"
+    },
+    "filename_stub": "reference_scene_none_stone_house",
+    "has_reference_context": false,
+    "height": 400,
+    "no_background": false,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "fallback",
+    "postprocess": {},
+    "style_target": "none",
+    "width": 400,
+    "workflow": "reference_scene"
+  },
+  "llm_block_mc": {
+    "asset_type": "block_texture",
+    "description": "gold block material",
+    "descriptions": {
+      "front": "gold block material, front face only, vertical side material",
+      "primary": "gold block material",
+      "side": "gold block material, side face only, vertical side material",
+      "top": "gold block material, top face only, seamless tile material"
+    },
+    "filename_stub": "block_texture_minecraft_gold_block",
+    "has_reference_context": false,
+    "height": 96,
+    "no_background": false,
+    "outputs_expected": [
+      "block_texture",
+      "top_face_source",
+      "front_face_source",
+      "side_face_source"
+    ],
+    "planning_source": "llm",
+    "postprocess": {
+      "compose_mode": "isometric",
+      "final_width": 16,
+      "front_height": 16,
+      "output_height": 32,
+      "output_width": 32,
+      "side_height": 16,
+      "top_height": 16
+    },
+    "style_target": "minecraft",
+    "width": 64,
+    "workflow": "block_texture_three_face"
+  },
+  "llm_icon": {
+    "asset_type": "icon",
+    "description": "a red healing potion. Canonical visual reference for Potion / Vial: small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.).",
+    "descriptions": {
+      "front": "a red healing potion. Canonical visual reference for Potion / Vial: small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.)., front face only, vertical side material",
+      "primary": "a red healing potion. Canonical visual reference for Potion / Vial: small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.).",
+      "side": "a red healing potion. Canonical visual reference for Potion / Vial: small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.)., side face only, vertical side material",
+      "top": "a red healing potion. Canonical visual reference for Potion / Vial: small glass vial with a wide round body and narrow neck, brightly colored liquid filling most of the body, cork or stopper on top, single white highlight on the glass. Liquid color follows the user's prompt (red for healing, blue for mana, green for poison, etc.)., top face only, seamless tile material"
+    },
+    "filename_stub": "icon_terraria_healing_potion",
+    "has_reference_context": false,
+    "height": 64,
+    "no_background": true,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {},
+    "style_target": "terraria",
+    "width": 64,
+    "workflow": "single_image"
+  },
+  "llm_reclassify_house": {
+    "asset_type": "reference_scene",
+    "description": "a small stone cottage",
+    "descriptions": {
+      "front": "a small stone cottage, front face only, vertical side material",
+      "primary": "a small stone cottage",
+      "side": "a small stone cottage, side face only, vertical side material",
+      "top": "a small stone cottage, top face only, seamless tile material"
+    },
+    "filename_stub": "reference_scene_none_stone_house",
+    "has_reference_context": false,
+    "height": 400,
+    "no_background": false,
+    "outputs_expected": [
+      "full_image"
+    ],
+    "planning_source": "llm",
+    "postprocess": {},
+    "style_target": "none",
+    "width": 400,
+    "workflow": "reference_scene"
+  }
+}

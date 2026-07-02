@@ -3,6 +3,22 @@ extends EditorPlugin
 
 const BACKEND_URL := "http://127.0.0.1:8000/vibe"
 const IMAGE_EXTENSIONS := ["png", "jpg", "jpeg", "webp"]
+const GENERATION_STYLE_OPTIONS := [
+	{"value": "none", "label": "No Style Target"},
+	{"value": "core_keeper", "label": "Core Keeper-like"},
+	{"value": "terraria", "label": "Terraria-like"},
+	{"value": "minecraft", "label": "Minecraft-like"},
+]
+const GENERATION_PROVIDER_OPTIONS := [
+	{"value": "pixellab", "label": "PixelLab"},
+	{"value": "openai_image", "label": "GPT Image"},
+]
+const GENERATION_MODE_OPTIONS := [
+	{"value": "auto", "label": "Auto (smart)", "description": "Picks the best method per asset: style transfer for block/ground textures, reference analysis for icons. Style transfer is PixelLab only; with GPT Image it falls back to text."},
+	{"value": "plain", "label": "Plain text", "description": "Generates only from the text prompt and the built-in style/material descriptions. No reference images used."},
+	{"value": "reference", "label": "Reference analysis", "description": "Looks at matching reference images, summarizes their style in words, and adds that to the prompt."},
+	{"value": "style_transfer", "label": "Style transfer", "description": "Feeds a matching reference image straight into PixelLab (bitforge) to copy its look. PixelLab only — not supported with GPT Image yet."},
+]
 const ALLOWED_METHODS := {
 	"add_child": false,
 	"queue_free": false,
@@ -60,10 +76,21 @@ class SceneTreeContextMenuPlugin:
 
 
 var http_request: HTTPRequest
+var options_http_request: HTTPRequest
 var prompt_dialog: ConfirmationDialog
 var prompt_summary_label: Label
 var prompt_example_label: Label
+var generation_settings_container: VBoxContainer
+var style_target_select: OptionButton
+var provider_select: OptionButton
+var mode_select: OptionButton
+var mode_description_label: Label
 var prompt_input: TextEdit
+
+
+var style_options: Array = GENERATION_STYLE_OPTIONS.duplicate(true)
+var provider_options: Array = GENERATION_PROVIDER_OPTIONS.duplicate(true)
+var mode_options: Array = GENERATION_MODE_OPTIONS.duplicate(true)
 
 var filesystem_create_menu
 var filesystem_asset_menu
@@ -81,7 +108,12 @@ func _enter_tree():
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
 
+	options_http_request = HTTPRequest.new()
+	add_child(options_http_request)
+	options_http_request.request_completed.connect(_on_options_completed)
+
 	_create_prompt_dialog()
+	_fetch_generation_options()
 
 	filesystem_create_menu = FilesystemCreateContextMenuPlugin.new(self)
 	filesystem_asset_menu = FilesystemAssetContextMenuPlugin.new(self)
@@ -108,6 +140,8 @@ func _exit_tree():
 		prompt_dialog.queue_free()
 	if http_request:
 		http_request.queue_free()
+	if options_http_request:
+		options_http_request.queue_free()
 
 
 func _create_prompt_dialog():
@@ -131,6 +165,44 @@ func _create_prompt_dialog():
 	prompt_example_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(prompt_example_label)
 
+	generation_settings_container = VBoxContainer.new()
+	generation_settings_container.visible = false
+	root.add_child(generation_settings_container)
+
+	var style_label = Label.new()
+	style_label.text = "Style Target"
+	generation_settings_container.add_child(style_label)
+
+	style_target_select = OptionButton.new()
+	style_target_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(style_target_select, style_options)
+	generation_settings_container.add_child(style_target_select)
+
+	var provider_label = Label.new()
+	provider_label.text = "Provider"
+	generation_settings_container.add_child(provider_label)
+
+	provider_select = OptionButton.new()
+	provider_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(provider_select, provider_options)
+	generation_settings_container.add_child(provider_select)
+
+	var mode_label = Label.new()
+	mode_label.text = "Generation Mode"
+	generation_settings_container.add_child(mode_label)
+
+	mode_select = OptionButton.new()
+	mode_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_populate_option_button(mode_select, mode_options)
+	mode_select.item_selected.connect(_on_mode_selected)
+	generation_settings_container.add_child(mode_select)
+
+	mode_description_label = Label.new()
+	mode_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mode_description_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	generation_settings_container.add_child(mode_description_label)
+	_update_mode_description()
+
 	prompt_input = TextEdit.new()
 	prompt_input.custom_minimum_size = Vector2(520, 180)
 	prompt_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -138,6 +210,91 @@ func _create_prompt_dialog():
 	root.add_child(prompt_input)
 
 	get_editor_interface().get_base_control().add_child(prompt_dialog)
+
+
+func _populate_option_button(button: OptionButton, options: Array):
+	button.clear()
+	for option in options:
+		var item_label = String(option.get("label", option.get("value", "")))
+		var item_value = String(option.get("value", item_label))
+		button.add_item(item_label)
+		var item_index = button.item_count - 1
+		button.set_item_metadata(item_index, item_value)
+	if button.item_count > 0:
+		button.select(0)
+
+
+func _on_mode_selected(_index: int):
+	_update_mode_description()
+
+
+func _update_mode_description():
+	if mode_description_label == null or mode_select == null:
+		return
+	var selected = mode_select.get_selected()
+	if selected < 0 or selected >= mode_options.size():
+		mode_description_label.text = ""
+		return
+	mode_description_label.text = String(mode_options[selected].get("description", ""))
+
+
+func _fetch_generation_options():
+	if options_http_request == null:
+		return
+	if options_http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		return
+	var error = options_http_request.request(BACKEND_URL + "/options")
+	if error != OK:
+		print("Vibe: could not fetch generation options, using built-in defaults (", error, ")")
+
+
+func _normalize_option_list(raw, fallback: Array) -> Array:
+	if typeof(raw) != TYPE_ARRAY:
+		return fallback
+	var normalized: Array = []
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var value = String(entry.get("value", ""))
+		if value.is_empty():
+			continue
+		normalized.append({"value": value, "label": String(entry.get("label", value)), "description": String(entry.get("description", ""))})
+	if normalized.is_empty():
+		return fallback
+	return normalized
+
+
+func _on_options_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+	if result != HTTPRequest.RESULT_SUCCESS or response_code >= 400:
+		print("Vibe: options request failed (", result, "/", response_code, "), keeping built-in defaults")
+		return
+
+	var payload = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(payload) != TYPE_DICTIONARY:
+		return
+
+	style_options = _normalize_option_list(payload.get("styles"), style_options)
+	provider_options = _normalize_option_list(payload.get("providers"), provider_options)
+	mode_options = _normalize_option_list(payload.get("modes"), mode_options)
+	if style_target_select:
+		_populate_option_button(style_target_select, style_options)
+	if provider_select:
+		_populate_option_button(provider_select, provider_options)
+	if mode_select:
+		_populate_option_button(mode_select, mode_options)
+		_update_mode_description()
+
+
+func _selected_option_value(button: OptionButton, fallback: String) -> String:
+	if button == null or button.item_count == 0:
+		return fallback
+	var selected_index = button.get_selected()
+	if selected_index < 0 or selected_index >= button.item_count:
+		return fallback
+	var metadata = button.get_item_metadata(selected_index)
+	if metadata == null:
+		return fallback
+	return String(metadata)
 
 
 func _is_supported_image_path(path: String) -> bool:
@@ -222,8 +379,20 @@ func _open_prompt_dialog(kind: String, summary: String, example: String, confirm
 	prompt_dialog.get_ok_button().text = confirm_text
 	prompt_summary_label.text = summary
 	prompt_example_label.text = example
+	generation_settings_container.visible = kind == "generate"
+	if kind == "generate":
+		if style_target_select.item_count > 0:
+			style_target_select.select(0)
+		if provider_select.item_count > 0:
+			provider_select.select(0)
+		if mode_select and mode_select.item_count > 0:
+			mode_select.select(0)
+		_update_mode_description()
 	prompt_input.clear()
-	prompt_dialog.popup_centered(Vector2i(560, 320))
+	var popup_size = Vector2i(560, 320)
+	if kind == "generate":
+		popup_size = Vector2i(560, 470)
+	prompt_dialog.popup_centered(popup_size)
 	prompt_input.grab_focus()
 
 
@@ -233,7 +402,7 @@ func _on_generate_context(selection):
 	_open_prompt_dialog(
 		"generate",
 		"Generate a new asset in %s" % folder_path,
-		"Example: I want a 32x32 pixel style pickaxe icon",
+		"Example: Make a 128x128 continuous top-down forest ground texture swatch, no grid lines or tile panels, or a Core Keeper-style stone block with top and front faces",
 		"Generate",
 		{"folder_path": folder_path},
 	)
@@ -282,6 +451,11 @@ func _on_prompt_confirmed():
 				{
 					"prompt": prompt,
 					"folder_path": String(active_dialog_context.get("folder_path", "res://")),
+					"asset_type": "auto",
+					"workflow_mode": "auto",
+					"generation_mode": _selected_option_value(mode_select, "auto"),
+					"style_target": _selected_option_value(style_target_select, "none"),
+					"provider": _selected_option_value(provider_select, "pixellab"),
 				}
 			)
 		"modify":
@@ -309,6 +483,7 @@ func _send_request(request_kind: String, payload: Dictionary):
 
 	pending_request_kind = request_kind
 	pending_request_context = payload
+	_print_request_log(request_kind, payload)
 
 	var error = http_request.request(
 		BACKEND_URL + "/" + request_kind,
@@ -323,6 +498,51 @@ func _send_request(request_kind: String, payload: Dictionary):
 		return
 
 	print("Vibe request sent: ", request_kind)
+
+
+func _print_request_log(request_kind: String, payload: Dictionary):
+	print("Vibe request start: ", request_kind)
+	if request_kind == "generate":
+		print(
+			"  prompt: ",
+			String(payload.get("prompt", "")),
+			" | provider: ",
+			String(payload.get("provider", "unknown")),
+			" | style: ",
+			String(payload.get("style_target", "none")),
+			" | mode: ",
+			String(payload.get("generation_mode", "auto")),
+			" | asset_type: ",
+			String(payload.get("asset_type", "auto")),
+			" | workflow_mode: ",
+			String(payload.get("workflow_mode", "auto"))
+		)
+	elif payload.has("prompt"):
+		print("  prompt: ", String(payload.get("prompt", "")))
+
+
+func _print_backend_error_log(payload: Dictionary, response_code: int):
+	print("Backend processing failed: ", payload.get("message", "unknown error"))
+	if response_code >= 400:
+		print("  http_status: ", response_code)
+	var log_path = String(payload.get("log_path", ""))
+	var log_event_id = String(payload.get("log_event_id", ""))
+	if not log_path.is_empty():
+		print("  generation_log: ", log_path, " event: ", log_event_id)
+	var plan = payload.get("plan", {})
+	if typeof(plan) != TYPE_DICTIONARY:
+		plan = {}
+	var workflow = String(payload.get("workflow", plan.get("workflow", "unknown")))
+	var provider = String(payload.get("provider", plan.get("provider", "unknown")))
+	var planning_source = String(payload.get("planning_source", plan.get("planning_source", "unknown")))
+	print(
+		"  workflow: ",
+		workflow,
+		" provider: ",
+		provider,
+		" planning: ",
+		planning_source
+	)
 
 
 func _on_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
@@ -344,7 +564,7 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 
 	var status = String(payload.get("status", ""))
 	if status != "success":
-		print("Backend processing failed: ", payload.get("message", "unknown error"))
+		_print_backend_error_log(payload, response_code)
 		return
 
 	var msg_type = String(payload.get("type", ""))
@@ -359,6 +579,43 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 func _handle_asset_response(payload: Dictionary):
 	var file_path = String(payload.get("file_path", ""))
 	print("Asset ready: ", file_path)
+	var workflow = String(payload.get("workflow", "unknown"))
+	var provider = String(payload.get("provider", "unknown"))
+	var plan = payload.get("plan", {})
+	var planning_source = "unknown"
+	var fallback_used = false
+	var reference_status = "none"
+	var reference_count = 0
+	if typeof(plan) == TYPE_DICTIONARY:
+		planning_source = String(plan.get("planning_source", "unknown"))
+		fallback_used = planning_source == "fallback"
+		var reference_images = plan.get("reference_images", [])
+		if typeof(reference_images) == TYPE_ARRAY:
+			reference_count = reference_images.size()
+		var reference_context = plan.get("reference_context", {})
+		if typeof(reference_context) == TYPE_DICTIONARY:
+			reference_status = String(reference_context.get("status", "none"))
+		elif reference_count > 0:
+			reference_status = "selected"
+	print(
+		"Generation workflow: ",
+		workflow,
+		" provider: ",
+		provider,
+		" planning: ",
+		planning_source,
+		" fallback: ",
+		fallback_used,
+		" references: ",
+		reference_status,
+		" (",
+		reference_count,
+		")"
+	)
+	var log_path = String(payload.get("log_path", ""))
+	var log_event_id = String(payload.get("log_event_id", ""))
+	if not log_path.is_empty():
+		print("Generation log: ", log_path, " event: ", log_event_id)
 	get_editor_interface().get_resource_filesystem().scan()
 	if not file_path.is_empty():
 		get_editor_interface().select_file(file_path)
