@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
-from style_matrix import STYLE_BLOCK_LAYOUTS, STYLE_MATRIX, style_block_layout, style_profile_dict
+from style_matrix import STYLE_MATRIX, style_block_layout, style_profile_dict
 
 BASE_DIR = Path(__file__).resolve().parent
 for env_path in (
@@ -464,13 +464,15 @@ def _block_face_source_dimensions(
     )
 
 
+def _slug(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
+
+
 def _normalize_style_target(style_target: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(style_target or "").strip().lower()).strip("_")
-    if normalized in {"", "none", "no_style", "default", "null", "nil", "undefined"}:
+    normalized = _slug(style_target)
+    if normalized in ("", "none"):
         return "none"
-    if normalized in SUPPORTED_STYLE_TARGETS:
-        return normalized
-    return "core_keeper"
+    return normalized if normalized in SUPPORTED_STYLE_TARGETS else "core_keeper"
 
 
 def _style_context(style_target: str) -> Dict[str, Any]:
@@ -493,32 +495,26 @@ def _style_context(style_target: str) -> Dict[str, Any]:
 
 
 def _normalize_asset_type(asset_type: str, allow_auto: bool = False) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(asset_type or "").strip().lower()).strip("_")
-    if allow_auto and normalized in {"", "auto", "automatic", "planned", "planner"}:
+    normalized = _slug(asset_type)
+    if allow_auto and normalized in ("", "auto"):
         return "auto"
-    if normalized in SUPPORTED_ASSET_TYPES:
-        return normalized
-    return "icon"
+    return normalized if normalized in SUPPORTED_ASSET_TYPES else "icon"
 
 
 def _normalize_workflow_mode(workflow_mode: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(workflow_mode or "").strip().lower()).strip("_")
-    if normalized in {"", "auto", "automatic", "planned", "planner"}:
-        return "auto"
-    return normalized
+    normalized = _slug(workflow_mode)
+    return "auto" if normalized in ("", "auto") else normalized
 
 
 def _normalize_generation_provider(provider: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(provider or "").strip().lower()).strip("_")
-    if normalized in {"gpt_image", "openai", "openai_images", "gpt_images"}:
+    normalized = _slug(provider)
+    if normalized in ("gpt_image", "openai"):
         return "openai_image"
-    if normalized in SUPPORTED_GENERATION_PROVIDERS:
-        return normalized
-    return "pixellab"
+    return normalized if normalized in SUPPORTED_GENERATION_PROVIDERS else "pixellab"
 
 
 def _normalize_generation_mode(mode: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(mode or "").strip().lower()).strip("_")
+    normalized = _slug(mode)
     return normalized if normalized in SUPPORTED_GENERATION_MODES else "auto"
 
 
@@ -807,13 +803,16 @@ def _build_reference_context(prompt: str, style_target: str, asset_type: str) ->
     return context
 
 
+_REFERENCE_TRAITS_MARKER = "Reference image style traits to apply without copying source art verbatim:"
+
+
 def _reference_prompt_suffix(reference_context: Optional[Dict[str, Any]]) -> str:
     if not isinstance(reference_context, dict):
         return ""
     analysis = str(reference_context.get("analysis") or "").strip()
     if not analysis:
         return ""
-    return "Reference image style traits to apply without copying source art verbatim: %s" % analysis.rstrip(".")
+    return "%s %s" % (_REFERENCE_TRAITS_MARKER, analysis.rstrip("."))
 
 
 def _description_with_reference_context(description: str, reference_context: Optional[Dict[str, Any]]) -> str:
@@ -1065,11 +1064,7 @@ def _strict_block_face_description(plan: Dict[str, Any], face: str, source_width
         if profile_title:
             material_parts.append("Block profile: %s" % profile_title)
     elif planned_face_description:
-        cleaned_face_description = planned_face_description
-        if "Reference image style traits to apply without copying source art verbatim:" in cleaned_face_description:
-            cleaned_face_description = cleaned_face_description.split(
-                "Reference image style traits to apply without copying source art verbatim:"
-            )[0].strip(" .")
+        cleaned_face_description = planned_face_description.split(_REFERENCE_TRAITS_MARKER)[0].strip(" .")
         material_parts.append("Face material details: %s" % cleaned_face_description.rstrip("."))
     if user_prompt:
         material_parts.append("Original user material request: %s" % user_prompt.rstrip("."))
@@ -1253,14 +1248,11 @@ def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str
         "animation frame", "animation sheet", "animated",
     )):
         return "spritesheet"
-    if any(token in lowered for token in ("two-face", "two face", "top and front", "top/front", "block texture", "voxel block")):
-        return "block_texture"
-    if re.search(r"\bblock\b", lowered):
-        return "block_texture"
-    if any(token in lowered for token in ("ground atlas", "terrain atlas", "tile atlas", "atlas", "tilemap", "terrain", "ground tile", "floor tile")):
-        return "ground_atlas"
+    explicit = _explicit_asset_type(prompt)
+    if explicit:
+        return explicit
     # Bare "ground"/"floor" read as tileable terrain (word boundary skips "background", "underground").
-    if re.search(r"\b(ground|floor)\b", lowered):
+    if "terrain" in lowered or re.search(r"\b(ground|floor)\b", lowered):
         return "ground_atlas"
     if any(token in lowered for token in (
         "house", "building", "castle", "tower", "shop", "tavern", "hut", "cabin",
@@ -1277,7 +1269,7 @@ def _infer_asset_type_from_prompt(prompt: str, requested_asset_type: str) -> str
 _EXPLICIT_ASSET_TYPE_MARKERS = (
     ("spritesheet", ("spritesheet", "sprite sheet")),
     ("ground_atlas", ("atlas", "tilemap", "tileset")),
-    ("block_texture", ("block texture", "voxel block")),
+    ("block_texture", ("block texture", "voxel block", "two-face", "two face", "top and front", "top/front")),
 )
 
 
@@ -1456,7 +1448,7 @@ def _finalize_block_texture_plan(
 
 
 def _normalize_workflow(asset_type: str, workflow: str, style_target: str = "none") -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "_", str(workflow or "").strip().lower()).strip("_")
+    normalized = _slug(workflow)
     allowed = {
         "single_image",
         "ground_atlas",
@@ -1959,15 +1951,6 @@ def _flatten_opaque_texture(image: Image.Image, fallback_rgb: Tuple[int, int, in
     background = Image.new("RGBA", image.size, fallback_rgb + (255,))
     foreground = image.convert("RGBA")
     return Image.alpha_composite(background, foreground)
-
-
-def _warp_top_face_isometric(top_face: Image.Image, width: int, height: int) -> Image.Image:
-    source = top_face.resize((width, width), RESAMPLING.NEAREST)
-    inset = max(2, width // 4)
-    quad = (0, height, width, height, width - inset, 0, inset, 0)
-    transform = getattr(Image, "Transform", Image)
-    quad_mode = getattr(transform, "QUAD", getattr(Image, "QUAD", 0))
-    return source.transform((width, height), quad_mode, quad, RESAMPLING.NEAREST)
 
 
 def _paste_textured_parallelogram(

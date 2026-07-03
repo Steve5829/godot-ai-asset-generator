@@ -8,6 +8,7 @@ const GENERATION_STYLE_OPTIONS := [
 	{"value": "core_keeper", "label": "Core Keeper-like"},
 	{"value": "terraria", "label": "Terraria-like"},
 	{"value": "minecraft", "label": "Minecraft-like"},
+	{"value": "stardew", "label": "Stardew Valley-like"},
 ]
 const GENERATION_PROVIDER_OPTIONS := [
 	{"value": "pixellab", "label": "PixelLab"},
