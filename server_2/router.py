@@ -5,6 +5,15 @@ ASSET_CLASSES = {
     "block": BlockAsset
 }
 
+KEYWORDS = {
+    "block":"block",
+    "icon": "icon"
+}
+
 def route(request):
-    asset_type = "icon"
-    return ASSET_CLASSES[asset_type]
+    text = request.prompt.lower()
+    for key, value in KEYWORDS.items():
+        if key in text:
+            return ASSET_CLASSES[value]
+    return ASSET_CLASSES["icon"]
+    

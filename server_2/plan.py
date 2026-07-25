@@ -6,6 +6,7 @@ class Plan:
     width: int
     height: int
     output_folder: str
+    filename: str
     compose_mode: str|None = None
     needs_compose: bool = False
     use_style_transfer: bool = False
