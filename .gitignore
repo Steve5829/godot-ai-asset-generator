@@ -227,6 +227,9 @@ server/logs/
 *.jpeg.import
 *.webp.import
 
+!md/images/
+!md/images/**/*.png
+
 # Reference image dataset should be versioned so clones can use it.
 !server/reference_images/
 !server/reference_images/**/
@@ -237,3 +240,5 @@ server/logs/
 
 __pycache__/
 .env
+
+server/downscale_targets.py
