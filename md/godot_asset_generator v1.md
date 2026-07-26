@@ -55,12 +55,12 @@ Asset appears in Godot, ready to use
 
 ### 2.2 Step by step (v2)
 
-1. **Request** — the plugin's HTTP payload becomes a `Request`: prompt, size, output folder, style, provider. It only stores the input; it does not interpret it.
-2. **route()** — decides the asset type. This is **layer 1: deterministic keyword matching** — the prompt is checked against a keyword table (icon, block, ground/tile, spritesheet, scene …) and the corresponding `Asset` class is returned. Selection happens once here, through a lookup, so no other step branches on type. It is deliberately not the whole story: type-*naming* words ("block", "spritesheet", "tileset") lock the type here; ambiguous *content* words ("a wooden treasure chest", "a cozy tavern") are left for layer 2. When nothing matches, it defaults to `icon` as fallback.
-3. **build_plan()** — the selected `Asset` converts the `Request` into a `Plan`. This is where **layer 2: the LLM** can enter — *only* when the caller left the type on `auto` and layer 1 did not lock it. The LLM makes the semantic guess a keyword table can never cover (chest → icon, tavern → scene) and, in the same call, fills the rest of the `Plan` (refined description, size, flags). It is optional and fail-safe: if it is unavailable or errors, a deterministic fallback `Plan` is used. A type-naming keyword from layer 1 still overrides the LLM's guess. See 4.2–4.3 for the full logic.
+1. **Request** — the plugin's HTTP payload becomes a `Request`: prompt, size, output folder, style, provider. It only stores the input, it does not interpret it.
+2. **route()** — decides the asset type. This is **layer 1: deterministic keyword matching** — the prompt is checked against a keyword table (icon, block, ground/tile, spritesheet, scene …) and the corresponding `Asset` class is returned. Selection happens once here through a lookup, so no other step branches on type. It is deliberately not the whole story: type-*naming* words ("block", "spritesheet", "tileset") lock the type here; ambiguous *content* words ("a wooden treasure chest", "a cozy tavern") are left for layer 2. When nothing matches, it defaults to `icon` as fallback.
+3. **build_plan()** — the selected `Asset` converts the `Request` into a `Plan`. This is where **layer 2: the LLM** can enter — *only* when the caller left the type on `auto` and layer 1 did not lock it. The LLM makes the semantic guess a keyword table can never cover (chest → icon, tavern → scene) and, in the same call, it fills the rest of the `Plan` (refined description, size, flags). It is optional and fail-safe: if it is unavailable or errors, a deterministic fallback `Plan` is used. A type-naming keyword from layer 1 still overrides the LLM's guess. See 4.2–4.3 for the full logic.
 4. **Plan** — the single data contract every downstream step reads: target size, output folder, and flags such as `needs_compose` / `use_style_transfer`.
-5. **generate()** — the `Provider` named in the request (PixelLab, OpenAI, …) is looked up in a table and called with the `Plan`. Every provider exposes the same `generate(plan)` signature, so the caller never branches on which provider it is.
-6. **compose + post-process** — multi-part assets are stitched; then downscale to the target size and snap the palette (see 5.4). 
+5. **generate()** — the `Provider` named in the request (PixelLab, OpenAI) is looked up in a table and called with the `Plan`. Every provider exposes the same `generate(plan)` signature, so the caller never branches on which provider it is.
+6. **compose + post-process** — multi-part assets are stitched, then downscale to the target size and snap the palette. 
 
 Example of the compose step — a block generated as a grass top and a dirt front, stitched into one 32×48 texture:
 
@@ -91,7 +91,7 @@ In the first family the model decides where each pixel sits. In the second, pixe
 
 ### 3.3 Per-provider analysis
 
-For each provider: what it does well, and argued from evidence, where it falls short. The recommendations follow from these limitations, not from a single score.
+For each provider: what it does well and, argued from evidence, where it falls short. The recommendations follow from these limitations, not from a single score.
 
 #### PixelLab
 
@@ -153,6 +153,7 @@ Same prompt per row, only the size and provider change. Images are shown **upsca
 | --- | --- |
 | ![PixelLab char 36](images/display/pixellab_character_36.png) | ![OpenAI char 36](images/display/openai_character_36.png) |
 
+
 **Scene — 640×360** (PixelLab capped at its 400 px ceiling → 400×224; OpenAI at the true target)
 
 | PixelLab (400×224, max) | OpenAI GPT Image (640×360) |
@@ -169,7 +170,7 @@ These are real artifacts from earlier runs. Sizes are not aligned to the targets
 | --- | --- |
 | ![pixellab forest ground](images/forest_ground_128x128.png) | ![openai forest ground](images/forest_ground_openai_128x128.png) |
 
-The PixelLab tile is darker, low-frequency, and blobby — clean pixels but sparse texture. The OpenAI tile is brighter with dense grass grain and richer detail, but retains AI in-between colors unless the palette-snap step is applied. This one pair is the §3.1 divide made visible.
+The PixelLab tile is darker, low-frequency, and blobby — clean pixels but sparse texture. The OpenAI tile is brighter with dense grass grain and richer detail, but retains AI in-between colors unless the palette-snap step is applied. This one pair is the 3.1 divide made visible.
 
 **High-resolution style reference, 1024×1024** (the kind of rich, full-resolution source a general model produces before downscaling — it is exactly this density that must survive the squeeze to a 24 px tile):
 
