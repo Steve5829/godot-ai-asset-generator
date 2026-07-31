@@ -1,12 +1,16 @@
-from asset import IconAsset, BlockAsset
+from asset import IconAsset, BlockAsset, SpriteSheetAsset, GroundAtlasAsset
 
 ASSET_CLASSES = {
     "icon": IconAsset,
-    "block": BlockAsset
+    "block": BlockAsset,
+    "spritesheet": SpriteSheetAsset,
+    "ground_atlas": GroundAtlasAsset
 }
 
 KEYWORDS = {
     "block":"block",
+    "spritesheet": "spritesheet",
+    "atlas": "ground_atlas",
     "icon": "icon"
 }
 

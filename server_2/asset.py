@@ -6,7 +6,8 @@ def slug(value):
     return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
 
 class Asset:
-    needs_compose = False
+    no_background = True
+    workflow = "icon"
     def build_plan(self, request):
             return Plan(
                 description = request.prompt,
@@ -14,16 +15,23 @@ class Asset:
                 height = request.height,
                 output_folder = request.folder,
                 filename = slug(request.prompt),
-                needs_compose = self.needs_compose
+                no_background = self.no_background,
+                workflow = self.workflow
             )
 
 class IconAsset(Asset):
     pass
     
 class BlockAsset(Asset):
-     needs_compose = True
+    no_background = False
+    workflow = "block"
 
+class SpriteSheetAsset(Asset):
+     workflow = "spritesheet"
 
+class GroundAtlasAsset(Asset):
+     no_background = False
+     workflow = "ground_atlas"
         
 
     
