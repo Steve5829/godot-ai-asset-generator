@@ -1,10 +1,6 @@
 from router import route
 from provider import PROVIDER_CLASSES
-from composer import COMPOSER_CLASSES
-
-def post_process(image):
-    return image
-
+from workflow import WORKFLOW_CLASSES
 class Pipeline:
     def run(self,request):
         asset = route(request)()

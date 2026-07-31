@@ -14,7 +14,7 @@ class IconWorkflow(Workflow):
 class BlockWorkflow(Workflow):
     def execute(self, plan, provider):
         image = provider.generate(plan)
-        composed = COMPOSER_CLASSES("two_face")().compose(image, image)
+        composed = COMPOSER_CLASSES["two_face"]().compose(image, image)
         record = save_image(composed, plan, role = "block_texture")
         return [record]
 WORKFLOW_CLASSES = {
