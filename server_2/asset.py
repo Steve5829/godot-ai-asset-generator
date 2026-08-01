@@ -1,43 +1,64 @@
 from plan import Plan
-import re
 from reference import select_reference
-# slug filename for path
-def slug(value):
-    return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
+from analyze import analyze_reference
+from text import tokens, slug
 
+BLOCK_MATERIALS = {
+    "grass": {"top": "grass", "front": "dirt"},
+}
+
+def match_material(prompt):
+    words = tokens(prompt)                 
+    for name, faces in BLOCK_MATERIALS.items():
+        if name in words:
+            return faces
+    return None
 class Asset:
     no_background = True
     workflow = "icon"
-    use_style = False
     reference_dir = "icon"
+    reference_mode = "none"
     def build_plan(self, request):
-        use_style_transfer = False
+        description = request.prompt
         reference_image = None
-        if self.use_style and request.style != "none":
+        if self.reference_mode != "none" and request.style != "none":
             ref = select_reference(request.style, self.reference_dir, request.prompt)
             if ref:
-                reference_image = str(ref)
-                use_style_transfer = True    
+                if self.reference_mode == "style":
+                    reference_image = str(ref)
+                elif self.reference_mode == "analyze":
+                    traits = analyze_reference(ref, request.prompt)
+                    if traits:
+                        description = f"{description}. {traits}"
+                   
         return Plan(
-            description = request.prompt,
+            description = description,
             width = request.width,
             height = request.height,
             output_folder = request.folder,
             filename = slug(request.prompt),
             no_background = self.no_background,
             workflow = self.workflow,
-            use_style_transfer = use_style_transfer,
+            faces = self.faces_for(request),
+            reference_mode = self.reference_mode,
             reference_image = reference_image
         )
+    def faces_for(self, request):
+        return None
 
 class IconAsset(Asset):
-    pass
+    reference_mode = "analyze"
     
 class BlockAsset(Asset):
     no_background = False
     workflow = "block"
-    use_style = True
     reference_dir = "block_texture"
+    def faces_for(self, request):
+        material = match_material(request.prompt)
+        if not material:
+            return None
+        return {face: f"{request.prompt}, {mat} material, {face} face" 
+                for face, mat in material.items()}
 
 class SpriteSheetAsset(Asset):
      workflow = "spritesheet"
@@ -45,7 +66,7 @@ class SpriteSheetAsset(Asset):
 class GroundAtlasAsset(Asset):
      no_background = False
      workflow = "ground_atlas"
-     use_style = True
+     reference_mode = "style"
      reference_dir = "ground_atlas"
         
 

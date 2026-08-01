@@ -7,8 +7,9 @@ class Plan:
     height: int
     output_folder: str
     filename: str
-    compose_mode: str|None = None
-    needs_compose: bool = False
-    use_style_transfer: bool = False
+    no_background: bool = True
+    workflow: str = "icon"
+    faces: dict|None = None
+    reference_mode : str = "none"
     reference_image: str|None = None
     

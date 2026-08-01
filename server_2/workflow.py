@@ -16,9 +16,13 @@ class IconWorkflow(Workflow):
 
 class BlockWorkflow(Workflow):
     def execute(self, plan, provider):
-        image = provider.generate(plan)
-        composed = COMPOSER_CLASSES["two_face"]().compose(image, image)
-        record = save_image(composed, plan, role = "block_texture")
+        if plan.faces:
+            top   = provider.generate(plan, plan.faces["top"])
+            front = provider.generate(plan, plan.faces["front"])
+        else:
+            top = front = provider.generate(plan)
+        composed = COMPOSER_CLASSES["two_face"]().compose(top, front)
+        record = save_image(composed, plan, role="block_texture")
         return [record]
 
 class SliceWorkflow(Workflow):

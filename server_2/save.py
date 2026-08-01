@@ -6,4 +6,4 @@ def save_image (image, plan, role, suffix=""):
     path = Path(folder)/f"{filename}.png"
     path.parent.mkdir(parents = True, exist_ok = True)
     path.write_bytes(image)
-    return {"file": path.name, "file path": str(path), "role": role}
+    return {"file": path.name, "file_path": str(path), "role": role}

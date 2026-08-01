@@ -6,18 +6,18 @@ from PIL import Image
 PIXELLAB_STYLE_STRENGTH = 45
 
 class Provider:
-    def generate(self, plan):
+    def generate(self, plan, description = None):
         raise NotImplementedError
 class PixellabProvider(Provider):
-    def generate(self, plan):
+    def generate(self, plan, description = None):
         if not PIXELLAB_API_KEY:
             raise ValueError("PIXELLAB_API_KEY not set")
         body = {
-                "description" : plan.description,
+                "description" : description or plan.description,
                 "image_size": {"width": plan.width, "height": plan.height},
                 "no_background": plan.no_background,
                 }
-        if plan.use_style_transfer and plan.reference_image:
+        if plan.reference_mode == "style" and plan.reference_image:
             endpoint = "generate-image-bitforge"
             body["style_image"] = encode_style_image(plan.reference_image, plan.width, plan.height)
             body["style_strength"] = PIXELLAB_STYLE_STRENGTH
@@ -35,8 +35,8 @@ class PixellabProvider(Provider):
         return base64.b64decode(encoded)
 
 class GPTProvider(Provider):
-    def generate(self, plan):
-        return "gpt image"
+    def generate(self, plan, description = None):
+        not NotImplementedError
 
 def encode_style_image(path, width, height):
     img = Image.open(path).convert("RGBA").resize((width, height), Image.NEAREST)

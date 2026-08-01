@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from request import Request
 from pipeline import Pipeline
 from provider import PROVIDER_CLASSES
-from workflow import WORKFLOW_CLASSES
 
 app = FastAPI()
 
