@@ -1,0 +1,62 @@
+@tool
+extends Node
+
+signal succeeded(payload: Dictionary)
+signal failed(message: String)
+signal options_loaded(styles, providers)
+
+const BACKEND_URL := "http://127.0.0.1:8000/vibe"
+
+var _http: HTTPRequest
+var _options_http: HTTPRequest
+
+
+func _ready():
+	_http = HTTPRequest.new()
+	add_child(_http)
+	_http.request_completed.connect(_on_completed)
+
+	_options_http = HTTPRequest.new()
+	add_child(_options_http)
+	_options_http.request_completed.connect(_on_options_completed)
+
+
+func send(endpoint: String, payload: Dictionary):
+	if _http.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		failed.emit("a request is already in flight")
+		return
+	var error := _http.request(
+		BACKEND_URL + "/" + endpoint,
+		PackedStringArray(["Content-Type: application/json"]),
+		HTTPClient.METHOD_POST,
+		JSON.stringify(payload)
+	)
+	if error != OK:
+		failed.emit("could not send request (%d)" % error)
+
+
+func fetch_options():
+	if _options_http.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
+		_options_http.request(BACKEND_URL + "/options")
+
+
+func _on_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+	if result != HTTPRequest.RESULT_SUCCESS:
+		failed.emit("HTTP request failed (%d)" % result)
+		return
+	var payload = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(payload) != TYPE_DICTIONARY:
+		failed.emit("could not parse backend response")
+		return
+	if String(payload.get("status", "")) != "success":
+		failed.emit(String(payload.get("message", "backend error %d" % response_code)))
+		return
+	succeeded.emit(payload)
+
+
+func _on_options_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+	if result != HTTPRequest.RESULT_SUCCESS or response_code >= 400:
+		return
+	var payload = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(payload) == TYPE_DICTIONARY:
+		options_loaded.emit(payload.get("styles"), payload.get("providers"))
