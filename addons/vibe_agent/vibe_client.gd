@@ -13,10 +13,12 @@ var _options_http: HTTPRequest
 
 func _ready():
 	_http = HTTPRequest.new()
+	_http.timeout = 180.0
 	add_child(_http)
 	_http.request_completed.connect(_on_completed)
 
 	_options_http = HTTPRequest.new()
+	_options_http.timeout = 15.0
 	add_child(_options_http)
 	_options_http.request_completed.connect(_on_options_completed)
 
