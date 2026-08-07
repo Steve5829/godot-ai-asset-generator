@@ -97,7 +97,7 @@ func open(kind: String, summary: String, context: Dictionary):
 
 
 func set_options(styles, providers):
-	_style_options = _normalize_options(styles, _style_options)
+	_style_options = _with_none(_normalize_options(styles, _style_options))
 	_provider_options = _normalize_options(providers, _provider_options)
 	_populate_options(_style_select, _style_options)
 	_populate_options(_provider_select, _provider_options)
@@ -159,3 +159,11 @@ func _normalize_options(raw, fallback: Array) -> Array:
 			if not value.is_empty():
 				out.append({"value": value, "label": String(entry.get("label", value))})
 	return out if not out.is_empty() else fallback
+
+func _with_none(styles: Array) -> Array:
+	for option in styles:
+		if String(option.get("value", "")) == "none":
+			return styles
+	var out: Array = [{"value": "none", "label": "No Style Target"}]
+	out.append_array(styles)
+	return out
