@@ -1,5 +1,5 @@
-from composer import COMPOSER_CLASSES
-from save import save_image
+from generate.composer import COMPOSER_CLASSES
+from generate.save import save_image
 import io
 from PIL import Image
 

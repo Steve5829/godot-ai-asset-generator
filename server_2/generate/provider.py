@@ -36,7 +36,7 @@ class PixellabProvider(Provider):
 
 class GPTProvider(Provider):
     def generate(self, plan, description = None):
-        not NotImplementedError
+        raise NotImplementedError
 
 def encode_style_image(path, width, height):
     img = Image.open(path).convert("RGBA").resize((width, height), Image.NEAREST)

@@ -1,6 +1,6 @@
-from plan import Plan
-from reference import select_reference
-from analyze import analyze_reference
+from generate.plan import Plan
+from reference.select import select_reference
+from reference.analyze import analyze_reference
 from text import tokens, slug
 
 BLOCK_MATERIALS = {

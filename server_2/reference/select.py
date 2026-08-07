@@ -1,8 +1,7 @@
 from pathlib import Path
-import re
 from text import tokens
 
-REFERENCE_ROOT = Path(__file__).parent.parent / "server" / "reference_images"
+REFERENCE_ROOT = Path(__file__).parent.parent / "reference_images"
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 
 

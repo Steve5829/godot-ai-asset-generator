@@ -1,4 +1,4 @@
-from asset import IconAsset, BlockAsset, SpriteSheetAsset, GroundAtlasAsset
+from generate.asset import IconAsset, BlockAsset, SpriteSheetAsset, GroundAtlasAsset
 
 ASSET_CLASSES = {
     "icon": IconAsset,
