@@ -17,4 +17,13 @@ def select_reference(style, reference_dir, prompt):
         score = len(prompt_tokens & tokens(path.stem))  
         if score > best_score:
             best, best_score = path, score
-    return best        
+    return best
+
+def list_styles():
+    if not REFERENCE_ROOT.is_dir():
+        return []
+    return sorted(
+        entry.name                       
+        for entry in REFERENCE_ROOT.iterdir()
+        if entry.is_dir()          
+    )        

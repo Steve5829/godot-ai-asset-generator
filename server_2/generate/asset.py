@@ -18,6 +18,7 @@ class Asset:
     workflow = "icon"
     reference_dir = "icon"
     reference_mode = "none"
+    snap_colors = 0
     def build_plan(self, request):
         description = request.prompt
         reference_image = None
@@ -41,7 +42,8 @@ class Asset:
             workflow = self.workflow,
             faces = self.faces_for(request),
             reference_mode = self.reference_mode,
-            reference_image = reference_image
+            reference_image = reference_image,
+            snap_colors = self.snap_colors
         )
     def faces_for(self, request):
         return None
@@ -53,6 +55,7 @@ class BlockAsset(Asset):
     no_background = False
     workflow = "block"
     reference_dir = "block_texture"
+    snap_colors = 32
     def faces_for(self, request):
         material = match_material(request.prompt)
         if not material:
@@ -68,6 +71,7 @@ class GroundAtlasAsset(Asset):
      workflow = "ground_atlas"
      reference_mode = "style"
      reference_dir = "ground_atlas"
+     snap_colors = 32
         
 
     

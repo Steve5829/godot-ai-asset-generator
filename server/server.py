@@ -81,10 +81,13 @@ MAX_REFERENCE_IMAGES = 3
 REFERENCE_IMAGE_MAX_EDGE = 512
 RESAMPLING = getattr(Image, "Resampling", Image)
 PIXELLAB_MIN_IMAGE_SIZE = 32
+PIXELLAB_MAX_IMAGE_SIZE = 400
 PIXELLAB_BLOCK_SOURCE_MIN_WIDTH = 64
 PIXELLAB_STYLE_STRENGTH = float(os.getenv("PIXELLAB_STYLE_STRENGTH") or 45)
 PIXELLAB_STYLE_IMAGE_MAX_EDGE = 128
 STYLE_SNAP_COLORS = int(os.getenv("STYLE_SNAP_COLORS") or 24)
+DOWNSCALE_SNAP_PROVIDERS = {"openai_image"}
+DOWNSCALE_SNAP_COLORS = {"icon": 24, "ground_atlas": 24, "spritesheet": 24}
 REFERENCE_IMAGE_SYNONYM_GROUPS = (
     {"potion", "healing", "bottle", "vial", "flask", "elixir"},
     {"sword", "blade", "weapon"},
@@ -420,15 +423,15 @@ def _clamp_size(value: int, default: int) -> int:
         parsed = int(value)
     except (TypeError, ValueError):
         parsed = default
-    return max(16, min(400, parsed))
+    return max(16, min(1024, parsed))
 
 
 def _provider_safe_dimensions(provider: str, width: int, height: int) -> Dict[str, int]:
     safe_width = _clamp_size(width, 32)
     safe_height = _clamp_size(height, 32)
     if _normalize_generation_provider(provider) == "pixellab":
-        safe_width = max(PIXELLAB_MIN_IMAGE_SIZE, safe_width)
-        safe_height = max(PIXELLAB_MIN_IMAGE_SIZE, safe_height)
+        safe_width = min(PIXELLAB_MAX_IMAGE_SIZE, max(PIXELLAB_MIN_IMAGE_SIZE, safe_width))
+        safe_height = min(PIXELLAB_MAX_IMAGE_SIZE, max(PIXELLAB_MIN_IMAGE_SIZE, safe_height))
     return {"width": safe_width, "height": safe_height}
 
 
@@ -1558,7 +1561,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
                 "Honour style_context when style_target is not 'none'; otherwise stay style-neutral. "
                 "If reference_context or icon_reference_profile is present, use them as anchors — don't trace them. "
                 "Return JSON with asset_type, workflow, provider, style_target, description, descriptions, width, height, "
-                "filename_stub, no_background, postprocess, outputs_expected, notes. Width/height in [16, 400]. "
+                "filename_stub, no_background, postprocess, outputs_expected, notes. Width/height in [16, 1024]. "
                 "Fallback plan is included; copy what's reasonable and override what's wrong."
             ),
             {
@@ -1601,6 +1604,7 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
         planned_asset_type = _normalize_asset_type(_explicit_asset_type(request.prompt) or plan.get("asset_type"))
     default_dimensions = _default_generation_dimensions(planned_asset_type)
     fallback_dimensions = _parse_prompt_dimensions(request.prompt, default_dimensions["width"], default_dimensions["height"])
+    prompt_has_explicit_size = re.search(r"(\d{2,4})\s*[xX×]\s*(\d{2,4})", request.prompt) is not None
     asset_spec = _asset_type_spec(planned_asset_type)
     workflow = _normalize_workflow(planned_asset_type, plan.get("workflow") or fallback["workflow"], normalized_style)
     fallback_postprocess = _default_postprocess_config(request.prompt, planned_asset_type, normalized_style)
@@ -1635,8 +1639,8 @@ def _plan_generation_workflow(request: GenerateAssetRequest) -> Dict[str, Any]:
             "front": str(descriptions.get("front") or "%s, front face only, vertical side material" % primary_description).strip(),
             "side": str(descriptions.get("side") or "%s, side face only, vertical side material" % primary_description).strip(),
         },
-        "width": _clamp_size(plan.get("width"), fallback_dimensions["width"]),
-        "height": _clamp_size(plan.get("height"), fallback_dimensions["height"]),
+        "width": fallback_dimensions["width"] if prompt_has_explicit_size else _clamp_size(plan.get("width"), fallback_dimensions["width"]),
+        "height": fallback_dimensions["height"] if prompt_has_explicit_size else _clamp_size(plan.get("height"), fallback_dimensions["height"]),
         "filename_stub": _filename_with_mode(
             _safe_stem(str(plan.get("filename_stub") or fallback["filename_stub"]), "generated_asset"),
             generation_mode,
@@ -2265,6 +2269,8 @@ def _execute_generation_workflow(plan: Dict[str, Any], target_folder: Path) -> L
         no_background=bool(plan["no_background"]),
         style_image=style_image,
     )
+    if provider in DOWNSCALE_SNAP_PROVIDERS and plan["asset_type"] in DOWNSCALE_SNAP_COLORS:
+        image_bytes = _snap_pixel_palette(image_bytes, DOWNSCALE_SNAP_COLORS[plan["asset_type"]])
     full_path = target_folder / ("%s.png" % filename_stub)
     _save_generated_png(image_bytes, full_path)
     _append_output(outputs, full_path, "full_image")

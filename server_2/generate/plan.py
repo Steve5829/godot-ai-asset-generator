@@ -12,4 +12,5 @@ class Plan:
     faces: dict|None = None
     reference_mode : str = "none"
     reference_image: str|None = None
+    snap_colors: int = 0
     

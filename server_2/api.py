@@ -4,6 +4,7 @@ from generate.request import Request
 from generate.pipeline import Pipeline
 from generate.provider import PROVIDER_CLASSES
 from automate.planner import plan_actions
+from reference.select import list_styles
 
 app = FastAPI()
 
@@ -54,5 +55,5 @@ def automate(body: AutomateBody):
 def options():
     return {
         "providers": list(PROVIDER_CLASSES),
-        # style:
+        "styles": list_styles()
     }
