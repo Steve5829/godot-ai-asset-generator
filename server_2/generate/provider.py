@@ -1,5 +1,5 @@
 import requests, base64
-from config import PIXELLAB_API_KEY
+from config import PIXELLAB_API_KEY, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_IMAGE_MODEL, OPENAI_IMAGE_QUALITY
 import io
 from PIL import Image
 
@@ -36,7 +36,30 @@ class PixellabProvider(Provider):
 
 class GPTProvider(Provider):
     def generate(self, plan, description = None):
-        raise NotImplementedError
+        if not OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY not set")
+        body = {
+                "model": OPENAI_IMAGE_MODEL,
+                "prompt" : description or plan.description,
+                "size" : openai_image_size(plan.width, plan.height),
+                "quality": OPENAI_IMAGE_QUALITY,
+                "n": 1,
+                "output_format": "png",
+                }
+        if plan.no_background:
+            body["background"] = "transparent"
+        response = requests.post(
+            OPENAI_BASE_URL + "/images/generations",
+            headers = {"Authorization": "Bearer " + OPENAI_API_KEY},
+            json = body,
+            timeout = (10,180)
+            )
+        response.raise_for_status()
+        payload = response.json()
+        encoded = payload["data"][0]["b64_json"]
+        raw = base64.b64decode(encoded)
+        return resize_png(raw, plan.width, plan.height)
+
 
 def encode_style_image(path, width, height):
     img = Image.open(path).convert("RGBA").resize((width, height), Image.NEAREST)
@@ -44,6 +67,20 @@ def encode_style_image(path, width, height):
     img.save(buf, format="PNG")
     encoded = base64.b64encode(buf.getvalue()).decode()
     return {"type": "base64", "base64": encoded, "format": "png"}
+
+def openai_image_size(width, height):
+    if width > height:
+        return "1536x1024"
+    if height > width:
+        return "1024x1536"
+    return "1024x1024"
+
+def resize_png(image_bytes, width, height):
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    img = img.resize((width, height), Image.LANCZOS)  
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 PROVIDER_CLASSES = {
     "pixellab":PixellabProvider,
