@@ -63,8 +63,6 @@ class GPTProvider(Provider):
 
 
 def generate_isometric_tile(description, width, height, timeout_s=120, poll_s=3):
-    # PixelLab v2 native isometric block: one call renders a finished cube
-    # (top/side geometry handled server-side), returned via an async job.
     if not PIXELLAB_API_KEY:
         raise ValueError("PIXELLAB_API_KEY not set")
     headers = {"Authorization": "Bearer " + PIXELLAB_API_KEY}

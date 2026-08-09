@@ -1,0 +1,18 @@
+{
+  "wrapper": "Create a {width}x{height} seamless pixel art material texture tile. This is NOT an icon, NOT a cube drawing, and NOT a perspective object. Draw only the {face_label} material for a game block. {material}. {rules}{match}{guard}Fill the entire canvas edge-to-edge with opaque material texture. Every pixel must be filled with solid material color; no transparency, no empty areas, no checkerboard, no gray cutout background, and no matte padding. No object silhouette, no isometric cube, no floor, no horizon, no labels, no border. Crisp pixel art, hard edges, limited palette, tileable material texture.",
+  "face_labels": {
+    "top": "top horizontal face",
+    "front": "front vertical face",
+    "side": "side vertical face"
+  },
+  "face_rules": {
+    "top": "Read as one flat pixel-art material tile for the top face only. Follow the user material request literally and keep the same material family on every face. Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, or tile seams unless the user explicitly asked for brick or masonry. No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture.",
+    "front": "Read as one flat pixel-art material tile for this side/front face only. Follow the user material request literally and keep the same material family as the top face. Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, or tile seams unless the user explicitly asked for brick or masonry. No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture.",
+    "side": "Read as one flat pixel-art material tile for this side/front face only. Follow the user material request literally and keep the same material family as the top face. Do not draw brick grids, brick walls, masonry blocks, mortar lines, cobblestone rectangles, or tile seams unless the user explicitly asked for brick or masonry. No grass, leaves, dirt, roots, scene, inventory icon, cube preview, or unrelated biome texture."
+  },
+  "match": "Cross-face consistency: every face of this block must use the exact same material palette and pixel-noise pattern; no icons, items, loot sprites, grass, or unrelated materials on any face.",
+  "icon_guard": {
+    "tokens": ["diamond", "emerald", "lapis", "gem", "jewel", "ruby", "sapphire", "amethyst", "quartz", "mineral"],
+    "text": "Do NOT draw a gem item icon, faceted jewel, loot sprite, inventory item, sword, tool, UI icon, or cut-diamond illustration. Draw only flat square block material texture."
+  }
+}

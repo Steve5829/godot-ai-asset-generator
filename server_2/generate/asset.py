@@ -1,12 +1,24 @@
 import json
 from pathlib import Path
 from generate.plan import Plan
+from generate.prompt import build_face_description
 from reference.select import select_reference
 from reference.analyze import analyze_reference
 from text import tokens, slug
 
 MATERIALS_PATH = Path(__file__).parent / "data" / "materials.json"
-BLOCK_MATERIALS = json.loads(MATERIALS_PATH.read_text())
+
+def _material(entry):
+    fill = entry.get("material")
+    front = entry.get("front", fill)
+    return {
+        "keywords": entry["keywords"],
+        "top": entry.get("top", fill),
+        "front": front,
+        "side": entry.get("side", front),
+    }
+
+BLOCK_MATERIALS = {name: _material(entry) for name, entry in json.loads(MATERIALS_PATH.read_text()).items()}
 
 def match_material(prompt):
     words = tokens(prompt)
@@ -67,7 +79,7 @@ class BlockAsset(Asset):
         material = match_material(request.prompt)
         if not material:
             return None
-        return {face: f"{request.prompt}, {material[face]}, {face} face"
+        return {face: build_face_description(request.prompt, material, face, request.width, request.height)
                 for face in self.block_faces}
 
 class IsometricBlockAsset(BlockAsset):
@@ -79,7 +91,7 @@ class NativeIsometricBlockAsset(BlockAsset):
     def describe(self, request, description):
         material = match_material(request.prompt)
         if material:
-            return f"{material['top']} on top of {material['front']}"
+            return material["top"] + " on top of " + material["front"]
         return request.prompt
 
 class SpriteSheetAsset(Asset):

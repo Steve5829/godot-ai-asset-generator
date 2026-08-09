@@ -11,8 +11,7 @@
       "tree"
     ],
     "top": "dense forest ground canopy made of many rounded green leaf clusters, clover-like leaf shapes, moss patches, tiny yellow flower dots, dark teal shadow gaps, organic leafy noise; mostly green, not plain flat grass",
-    "front": "vertical wall of tangled exposed tree roots and twisting brown branches, rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe along the upper seam; root lattice texture, not plain dirt",
-    "side": "vertical wall of tangled exposed tree roots and twisting brown branches, rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe along the upper seam; root lattice texture, not plain dirt"
+    "front": "vertical wall of tangled exposed tree roots and twisting brown branches, rotated branch-like root knots, dark hollow gaps between roots, mossy green fringe along the upper seam; root lattice texture, not plain dirt"
   },
   "desert": {
     "keywords": [
@@ -23,8 +22,7 @@
       "dune"
     ],
     "top": "warm sandy top surface with small wind-shaped grains, pale gold and tan color variation, sparse cracked patterns",
-    "front": "compact sand and sandstone vertical wall with soft horizontal strata, grainy sand pockets, warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks",
-    "side": "compact sand and sandstone vertical wall with soft horizontal strata, grainy sand pockets, warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks"
+    "front": "compact sand and sandstone vertical wall with soft horizontal strata, grainy sand pockets, warm tan and gold erosion marks, dry sediment texture; same sand block material family as the top face, not brick masonry, not rectangular brick grid, not red clay bricks, not cobblestone blocks"
   },
   "ocean": {
     "keywords": [
@@ -35,8 +33,7 @@
       "underwater"
     ],
     "top": "wet blue-green coral rock top with tiny coral specks, seaweed flecks, cool turquoise highlights, damp uneven surface",
-    "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture",
-    "side": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture"
+    "front": "dark wet rock vertical wall with algae streaks, barnacle-like dots, blue-green shadows, underwater mineral texture"
   },
   "barren": {
     "keywords": [
@@ -50,9 +47,7 @@
       "granite",
       "andesite"
     ],
-    "top": "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, simple repeatable stone grain; the exact same material on every block face",
-    "front": "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, simple repeatable stone grain; the exact same material on every block face",
-    "side": "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, simple repeatable stone grain; the exact same material on every block face"
+    "material": "flat gray pixel-art stone with low-contrast pixel noise, subtle darker gray specks, simple repeatable stone grain; the exact same material on every block face"
   },
   "gem": {
     "keywords": [
@@ -66,9 +61,7 @@
       "gem",
       "mineral"
     ],
-    "top": "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; for diamond block use light cyan and aqua blue specks on a bright cyan base; for emerald block use green and teal specks on a bright emerald base; for lapis block use deep blue and navy specks on a royal blue base; identical flat block material on every face; NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration",
-    "front": "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; for diamond block use light cyan and aqua blue specks on a bright cyan base; for emerald block use green and teal specks on a bright emerald base; for lapis block use deep blue and navy specks on a royal blue base; identical flat block material on every face; NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration",
-    "side": "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; for diamond block use light cyan and aqua blue specks on a bright cyan base; for emerald block use green and teal specks on a bright emerald base; for lapis block use deep blue and navy specks on a royal blue base; identical flat block material on every face; NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration"
+    "material": "flat pixel-art mineral block surface with subtle pixel noise in one tight palette; for diamond block use light cyan and aqua blue specks on a bright cyan base; for emerald block use green and teal specks on a bright emerald base; for lapis block use deep blue and navy specks on a royal blue base; identical flat block material on every face; NOT a diamond gem icon, NOT a faceted jewel shape, NOT an inventory item sprite, NOT a loot drop illustration"
   },
   "metal": {
     "keywords": [
@@ -83,9 +76,7 @@
       "tin",
       "zinc"
     ],
-    "top": "flat metal block material selected from the user's requested metal; gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, iron and steel blocks must be silver-gray, copper blocks must be orange-copper, and every face must use the exact same metal material; no gray rock, no stone grain, no grass, no dirt, no ore crystals",
-    "front": "flat metal block material selected from the user's requested metal; gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, iron and steel blocks must be silver-gray, copper blocks must be orange-copper, and every face must use the exact same metal material; no gray rock, no stone grain, no grass, no dirt, no ore crystals",
-    "side": "flat metal block material selected from the user's requested metal; gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, iron and steel blocks must be silver-gray, copper blocks must be orange-copper, and every face must use the exact same metal material; no gray rock, no stone grain, no grass, no dirt, no ore crystals"
+    "material": "flat metal block material selected from the user's requested metal; gold blocks must be rich yellow-gold with amber and pale-yellow pixel noise, iron and steel blocks must be silver-gray, copper blocks must be orange-copper, and every face must use the exact same metal material; no gray rock, no stone grain, no grass, no dirt, no ore crystals"
   },
   "obsidian": {
     "keywords": [
@@ -94,9 +85,7 @@
       "glassy",
       "scoria"
     ],
-    "top": "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, tiny lighter purple specks scattered sparsely, smooth glassy not rocky, no grass, no stone grain, no brick grid, no mortar lines",
-    "front": "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, tiny lighter purple specks scattered sparsely, smooth glassy not rocky, no grass, no stone grain, no brick grid, no mortar lines",
-    "side": "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, tiny lighter purple specks scattered sparsely, smooth glassy not rocky, no grass, no stone grain, no brick grid, no mortar lines"
+    "material": "flat dark purple-black volcanic glass block surface with subtle deep-violet pixel noise, tiny lighter purple specks scattered sparsely, smooth glassy not rocky, no grass, no stone grain, no brick grid, no mortar lines"
   },
   "ice": {
     "keywords": [
@@ -108,9 +97,7 @@
       "glacier",
       "tundra"
     ],
-    "top": "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass",
-    "front": "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass",
-    "side": "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass"
+    "material": "flat pale blue-white ice or snow block material with subtle light-blue pixel noise, tiny white sparkle specks, soft cyan shadows; for snow use mostly white with faint blue shadow specks, for ice use pale cyan-white with subtle frost cracks; no stone grain, no brick, no grass"
   },
   "glass": {
     "keywords": [
@@ -119,9 +106,7 @@
       "window",
       "stained"
     ],
-    "top": "flat translucent glass block material with a 1px lighter rim on all four edges, very pale tint inside, sparse single-pixel highlights, mostly empty interior; no brick grid, no stone, no grass; the rim suggests a glass pane edge",
-    "front": "flat translucent glass block material with a 1px lighter rim on all four edges, very pale tint inside, sparse single-pixel highlights, mostly empty interior; no brick grid, no stone, no grass; the rim suggests a glass pane edge",
-    "side": "flat translucent glass block material with a 1px lighter rim on all four edges, very pale tint inside, sparse single-pixel highlights, mostly empty interior; no brick grid, no stone, no grass; the rim suggests a glass pane edge"
+    "material": "flat translucent glass block material with a 1px lighter rim on all four edges, very pale tint inside, sparse single-pixel highlights, mostly empty interior; no brick grid, no stone, no grass; the rim suggests a glass pane edge"
   },
   "brick": {
     "keywords": [
@@ -130,9 +115,7 @@
       "masonry",
       "mortar"
     ],
-    "top": "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of red, orange, or tan for natural variation; tileable seamlessly on all edges",
-    "front": "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of red, orange, or tan for natural variation; tileable seamlessly on all edges",
-    "side": "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of red, orange, or tan for natural variation; tileable seamlessly on all edges"
+    "material": "flat masonry brick wall material with a regular grid of warm red-orange brick rectangles, thin 1px dark-gray mortar lines between bricks, every brick a slightly different shade of red, orange, or tan for natural variation; tileable seamlessly on all edges"
   },
   "nether": {
     "keywords": [
@@ -143,9 +126,7 @@
       "hellstone",
       "infernal"
     ],
-    "top": "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, small black pitted holes, ember-like bright pixels scattered sparsely; no gray stone, no brick grid, no grass, no water",
-    "front": "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, small black pitted holes, ember-like bright pixels scattered sparsely; no gray stone, no brick grid, no grass, no water",
-    "side": "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, small black pitted holes, ember-like bright pixels scattered sparsely; no gray stone, no brick grid, no grass, no water"
+    "material": "flat dark-red volcanic rock material with deep maroon base, orange and bright-red glow specks, small black pitted holes, ember-like bright pixels scattered sparsely; no gray stone, no brick grid, no grass, no water"
   },
   "mushroom": {
     "keywords": [
@@ -154,9 +135,7 @@
       "shroom",
       "toadstool"
     ],
-    "top": "flat mushroom block material: red cap face has bright red base with round white spots, stem face has cream-white base with subtle vertical fiber lines; no grass, no dirt, no stone, no brick",
-    "front": "flat mushroom block material: red cap face has bright red base with round white spots, stem face has cream-white base with subtle vertical fiber lines; no grass, no dirt, no stone, no brick",
-    "side": "flat mushroom block material: red cap face has bright red base with round white spots, stem face has cream-white base with subtle vertical fiber lines; no grass, no dirt, no stone, no brick"
+    "material": "flat mushroom block material: red cap face has bright red base with round white spots, stem face has cream-white base with subtle vertical fiber lines; no grass, no dirt, no stone, no brick"
   },
   "dirt": {
     "keywords": [
@@ -166,9 +145,7 @@
       "earth",
       "loam"
     ],
-    "top": "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, tiny lighter tan pebble pixels, small black holes; no grass top, no roots, no stone, no brick",
-    "front": "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, tiny lighter tan pebble pixels, small black holes; no grass top, no roots, no stone, no brick",
-    "side": "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, tiny lighter tan pebble pixels, small black holes; no grass top, no roots, no stone, no brick"
+    "material": "flat warm brown dirt block material with medium-brown base, darker brown shadow specks, tiny lighter tan pebble pixels, small black holes; no grass top, no roots, no stone, no brick"
   },
   "wood": {
     "keywords": [
@@ -194,9 +171,7 @@
       "ceramic",
       "kaolin"
     ],
-    "top": "smooth warm orange-brown ceramic block with low-contrast pixel noise, subtle darker terracotta speck variations, no cracks; identical on every face",
-    "front": "smooth warm orange-brown ceramic block with low-contrast pixel noise, subtle darker terracotta speck variations, no cracks; identical on every face",
-    "side": "smooth warm orange-brown ceramic block with low-contrast pixel noise, subtle darker terracotta speck variations, no cracks; identical on every face"
+    "material": "smooth warm orange-brown ceramic block with low-contrast pixel noise, subtle darker terracotta speck variations, no cracks; identical on every face"
   },
   "end_stone": {
     "keywords": [
@@ -205,36 +180,28 @@
       "endstone",
       "purpur"
     ],
-    "top": "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, alien smooth texture; no grass, no brick",
-    "front": "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, alien smooth texture; no grass, no brick",
-    "side": "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, alien smooth texture; no grass, no brick"
+    "material": "pale yellow-tan rocky block with subtle warm cream highlights and small darker tan pit specks, alien smooth texture; no grass, no brick"
   },
   "prismarine": {
     "keywords": [
       "prismarine",
       "aquamarine"
     ],
-    "top": "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass",
-    "front": "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass",
-    "side": "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass"
+    "material": "cool teal-green block with a faint diagonal lattice pattern, lighter cyan highlights and darker teal shadow squares forming subtle geometric tiles; underwater mineral look; no brick, no grass"
   },
   "basalt": {
     "keywords": [
       "basalt",
       "columnar"
     ],
-    "top": "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, subtle warmer brown speck noise; no brick grid, no mortar",
-    "front": "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, subtle warmer brown speck noise; no brick grid, no mortar",
-    "side": "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, subtle warmer brown speck noise; no brick grid, no mortar"
+    "material": "dark gray volcanic basalt block with vertical column-like striations, near-black shadow grooves, subtle warmer brown speck noise; no brick grid, no mortar"
   },
   "calcite": {
     "keywords": [
       "calcite",
       "chalk"
     ],
-    "top": "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; no brick, no grass, no cracks",
-    "front": "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; no brick, no grass, no cracks",
-    "side": "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; no brick, no grass, no cracks"
+    "material": "very pale off-white block with subtle pale-gray and faint cyan pixel noise, smooth chalky look; no brick, no grass, no cracks"
   },
   "soul_sand": {
     "keywords": [
@@ -242,45 +209,35 @@
       "soul",
       "soulsand"
     ],
-    "top": "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; no brick, no grass",
-    "front": "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; no brick, no grass",
-    "side": "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; no brick, no grass"
+    "material": "dark brown sandy block with faint ghostly pale-tan face impressions, grainy texture, sunken hollow spots; no brick, no grass"
   },
   "coal_block": {
     "keywords": [
       "coal_block",
       "coal"
     ],
-    "top": "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, smooth dense look; no brick, no grass",
-    "front": "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, smooth dense look; no brick, no grass",
-    "side": "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, smooth dense look; no brick, no grass"
+    "material": "near-black block with subtle dark-gray and very dark blue pixel noise, tiny lighter graphite specks, smooth dense look; no brick, no grass"
   },
   "glowstone": {
     "keywords": [
       "glowstone",
       "luminous"
     ],
-    "top": "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, soft inner glow halo; no brick, no grass",
-    "front": "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, soft inner glow halo; no brick, no grass",
-    "side": "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, soft inner glow halo; no brick, no grass"
+    "material": "luminous warm yellow-orange block with clusters of bright yellow specks and lighter cream highlights, soft inner glow halo; no brick, no grass"
   },
   "redstone_block": {
     "keywords": [
       "redstone_block",
       "redstone"
     ],
-    "top": "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, faint pinkish circuit-dust scatter; no brick, no grass",
-    "front": "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, faint pinkish circuit-dust scatter; no brick, no grass",
-    "side": "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, faint pinkish circuit-dust scatter; no brick, no grass"
+    "material": "solid vivid red block with darker red shadow specks and tiny brighter red highlight pixels, faint pinkish circuit-dust scatter; no brick, no grass"
   },
   "bone_block": {
     "keywords": [
       "bone_block",
       "bone"
     ],
-    "top": "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, subtle pale gray shadow noise; no brick, no grass",
-    "front": "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, subtle pale gray shadow noise; no brick, no grass",
-    "side": "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, subtle pale gray shadow noise; no brick, no grass"
+    "material": "ivory cream-white block with thin parallel dark gray hollow lines suggesting bone marrow channels, subtle pale gray shadow noise; no brick, no grass"
   },
   "wool": {
     "keywords": [
@@ -288,9 +245,7 @@
       "cloth",
       "carpet"
     ],
-    "top": "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs (color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); soft texture, no brick, no grass",
-    "front": "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs (color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); soft texture, no brick, no grass",
-    "side": "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs (color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); soft texture, no brick, no grass"
+    "material": "fluffy fabric block: by default off-white with subtle paler highlights and faint pale-gray shadow puffs (color follows the requested wool color: red wool, blue wool, etc., adjust palette accordingly); soft texture, no brick, no grass"
   },
   "hay_bale": {
     "keywords": [
@@ -308,9 +263,7 @@
       "honeycomb",
       "honey"
     ],
-    "top": "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, single highlight pixels in each cell suggesting honey; no brick, no grass",
-    "front": "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, single highlight pixels in each cell suggesting honey; no brick, no grass",
-    "side": "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, single highlight pixels in each cell suggesting honey; no brick, no grass"
+    "material": "warm golden-yellow block with a clear regular hexagonal cell grid, darker amber cell borders, single highlight pixels in each cell suggesting honey; no brick, no grass"
   },
   "slime_block": {
     "keywords": [
@@ -319,18 +272,14 @@
       "gel",
       "jelly"
     ],
-    "top": "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass",
-    "front": "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass",
-    "side": "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass"
+    "material": "translucent lime-green gelatinous block with a 1px lighter green rim, bright white highlight blobs suggesting wet jelly surface, subtle darker green shadow puddles; no brick, no grass"
   },
   "cactus": {
     "keywords": [
       "cactus",
       "saguaro"
     ],
-    "top": "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots scattered, slightly paler green highlights; no brick, no grass",
-    "front": "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots scattered, slightly paler green highlights; no brick, no grass",
-    "side": "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots scattered, slightly paler green highlights; no brick, no grass"
+    "material": "medium green cactus block with vertical darker green ridges on the front faces, small white spine dots scattered, slightly paler green highlights; no brick, no grass"
   },
   "moss_block": {
     "keywords": [
@@ -338,18 +287,14 @@
       "moss",
       "mossblock"
     ],
-    "top": "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow highlight specks, organic clumpy texture; no leaves, no dirt, no roots",
-    "front": "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow highlight specks, organic clumpy texture; no leaves, no dirt, no roots",
-    "side": "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow highlight specks, organic clumpy texture; no leaves, no dirt, no roots"
+    "material": "dense green moss block: bright moss-green base with darker green shadow clusters, tiny lime-yellow highlight specks, organic clumpy texture; no leaves, no dirt, no roots"
   },
   "leaves_block": {
     "keywords": [
       "leaves_block",
       "leaves"
     ],
-    "top": "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood",
-    "front": "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood",
-    "side": "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood"
+    "material": "dense leafy canopy block: layered green oak-leaf clusters with darker green shadow gaps, rounded leaf-cluster shapes filling the entire tile, tiny lighter green highlights; no dirt, no roots, no wood"
   },
   "pumpkin": {
     "keywords": [
@@ -383,9 +328,7 @@
       "lava",
       "magma"
     ],
-    "top": "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, tiny white-hot ember specks; intense inner glow; no brick, no grass",
-    "front": "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, tiny white-hot ember specks; intense inner glow; no brick, no grass",
-    "side": "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, tiny white-hot ember specks; intense inner glow; no brick, no grass"
+    "material": "bright molten orange-red surface with flowing yellow highlight blobs, darker red shadow gaps, tiny white-hot ember specks; intense inner glow; no brick, no grass"
   },
   "ebonstone": {
     "keywords": [
@@ -393,9 +336,7 @@
       "corruption",
       "corrupt"
     ],
-    "top": "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, ominous shadow gaps; no brick, no grass",
-    "front": "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, ominous shadow gaps; no brick, no grass",
-    "side": "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, ominous shadow gaps; no brick, no grass"
+    "material": "dark purple-black corrupted stone with deeper violet cracks and tiny sickly green-purple specks, ominous shadow gaps; no brick, no grass"
   },
   "crimstone": {
     "keywords": [
@@ -403,9 +344,7 @@
       "crimson",
       "crimtane"
     ],
-    "top": "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red specks; organic ominous look; no brick, no grass",
-    "front": "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red specks; organic ominous look; no brick, no grass",
-    "side": "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red specks; organic ominous look; no brick, no grass"
+    "material": "dark blood-red flesh-like stone with deeper maroon cracks, sinewy darker red veins, tiny pink-red specks; organic ominous look; no brick, no grass"
   },
   "pearlstone": {
     "keywords": [
@@ -413,18 +352,14 @@
       "hallow",
       "hallowed"
     ],
-    "top": "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, magical pure look; no brick, no grass",
-    "front": "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, magical pure look; no brick, no grass",
-    "side": "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, magical pure look; no brick, no grass"
+    "material": "pale pink-white smooth stone with subtle cyan and magenta sparkle specks, faint inner glow, magical pure look; no brick, no grass"
   },
   "hellstone": {
     "keywords": [
       "hellstone",
       "infernal"
     ],
-    "top": "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, tiny ember specks; intense underworld look; no brick, no grass",
-    "front": "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, tiny ember specks; intense underworld look; no brick, no grass",
-    "side": "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, tiny ember specks; intense underworld look; no brick, no grass"
+    "material": "dark gray rocky block with bright orange-red lava cracks running through it, glowing magma veins, tiny ember specks; intense underworld look; no brick, no grass"
   },
   "larva_floor": {
     "keywords": [
@@ -432,9 +367,7 @@
       "larva",
       "larvae"
     ],
-    "top": "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, soft top-down shading; no brick, no grass, no dirt",
-    "front": "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, soft top-down shading; no brick, no grass, no dirt",
-    "side": "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, soft top-down shading; no brick, no grass, no dirt"
+    "material": "warm orange squishy organic block with darker orange shadow folds, tiny cream-yellow highlight specks, soft top-down shading; no brick, no grass, no dirt"
   },
   "azeos_floor": {
     "keywords": [
@@ -442,9 +375,7 @@
       "azeos",
       "skyland"
     ],
-    "top": "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island look; muted earthy palette; no brick, no grass",
-    "front": "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island look; muted earthy palette; no brick, no grass",
-    "side": "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island look; muted earthy palette; no brick, no grass"
+    "material": "pale mint-green stone block with darker teal accent specks, tiny pale highlights, ancient sky-island look; muted earthy palette; no brick, no grass"
   },
   "shimmering_stone": {
     "keywords": [
@@ -452,9 +383,7 @@
       "shimmering",
       "shimmer"
     ],
-    "top": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass",
-    "front": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass",
-    "side": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass"
+    "material": "dark gray stone block with scattered bright cyan and white sparkle specks, faint inner glow, magical underground look; no brick, no grass"
   },
   "water": {
     "keywords": [
@@ -464,9 +393,7 @@
       "pond",
       "pool"
     ],
-    "top": "flat translucent blue water surface with gentle lighter-blue ripple lines and a few small white sparkle highlights, smooth and calm; no rock, no coral, no foam edges, no brick",
-    "front": "flat translucent blue water surface with gentle lighter-blue ripple lines and a few small white sparkle highlights, smooth and calm; no rock, no coral, no foam edges, no brick",
-    "side": "flat translucent blue water surface with gentle lighter-blue ripple lines and a few small white sparkle highlights, smooth and calm; no rock, no coral, no foam edges, no brick"
+    "material": "flat translucent blue water surface with gentle lighter-blue ripple lines and a few small white sparkle highlights, smooth and calm; no rock, no coral, no foam edges, no brick"
   },
   "gravel": {
     "keywords": [
@@ -475,9 +402,7 @@
       "pebbles",
       "shingle"
     ],
-    "top": "loose gray gravel made of many small rounded pebbles in mixed gray and brown tones with dark gaps between stones; no large rocks, no brick grid, no grass",
-    "front": "loose gray gravel made of many small rounded pebbles in mixed gray and brown tones with dark gaps between stones; no large rocks, no brick grid, no grass",
-    "side": "loose gray gravel made of many small rounded pebbles in mixed gray and brown tones with dark gaps between stones; no large rocks, no brick grid, no grass"
+    "material": "loose gray gravel made of many small rounded pebbles in mixed gray and brown tones with dark gaps between stones; no large rocks, no brick grid, no grass"
   },
   "farmland": {
     "keywords": [
@@ -487,9 +412,7 @@
       "furrow",
       "soil_row"
     ],
-    "top": "rich dark brown tilled farmland with evenly spaced raised soil rows and shallow furrows, small darker moisture patches and tiny pebble specks; no grass, no brick, no crops",
-    "front": "rich dark brown tilled farmland with evenly spaced raised soil rows and shallow furrows, small darker moisture patches and tiny pebble specks; no grass, no brick, no crops",
-    "side": "rich dark brown tilled farmland with evenly spaced raised soil rows and shallow furrows, small darker moisture patches and tiny pebble specks; no grass, no brick, no crops"
+    "material": "rich dark brown tilled farmland with evenly spaced raised soil rows and shallow furrows, small darker moisture patches and tiny pebble specks; no grass, no brick, no crops"
   },
   "concrete": {
     "keywords": [
@@ -497,8 +420,6 @@
       "cement",
       "plaster"
     ],
-    "top": "smooth solid-color concrete with very subtle fine pixel noise and faint tonal variation, flat and even; color follows the prompt (gray by default); no brick grid, no mortar lines, no cracks, no grass",
-    "front": "smooth solid-color concrete with very subtle fine pixel noise and faint tonal variation, flat and even; color follows the prompt (gray by default); no brick grid, no mortar lines, no cracks, no grass",
-    "side": "smooth solid-color concrete with very subtle fine pixel noise and faint tonal variation, flat and even; color follows the prompt (gray by default); no brick grid, no mortar lines, no cracks, no grass"
+    "material": "smooth solid-color concrete with very subtle fine pixel noise and faint tonal variation, flat and even; color follows the prompt (gray by default); no brick grid, no mortar lines, no cracks, no grass"
   }
 }
