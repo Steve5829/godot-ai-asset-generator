@@ -227,6 +227,9 @@ server/logs/
 *.jpeg.import
 *.webp.import
 
+!md/images/
+!md/images/**/*.png
+
 # Reference image dataset should be versioned so clones can use it.
 !server_2/reference_images/
 !server_2/reference_images/**/
