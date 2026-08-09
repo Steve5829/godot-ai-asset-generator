@@ -1,4 +1,5 @@
 from generate.composer import COMPOSER_CLASSES
+from generate.provider import generate_isometric_tile
 from generate.save import save_image
 import io
 from PIL import Image
@@ -16,13 +17,22 @@ class IconWorkflow(Workflow):
 
 class BlockWorkflow(Workflow):
     def execute(self, plan, provider):
+        composer = COMPOSER_CLASSES[plan.compose_mode]()        
+        names = composer.faces                            
         if plan.faces:
-            top   = provider.generate(plan, plan.faces["top"])
-            front = provider.generate(plan, plan.faces["front"])
+            parts = {name: provider.generate(plan, plan.faces[name]) for name in names}
         else:
-            top = front = provider.generate(plan)
-        composed = COMPOSER_CLASSES["two_face"]().compose(top, front)
+            shared = provider.generate(plan)          
+            parts = {name: shared for name in names}      
+        composed = composer.compose(parts)
         record = save_image(composed, plan, role="block_texture")
+        return [record]
+
+
+class IsometricNativeWorkflow(Workflow):
+    def execute(self, plan, provider):
+        image = generate_isometric_tile(plan.description, plan.width, plan.height)
+        record = save_image(image, plan, role="isometric_block")
         return [record]
 
 class SliceWorkflow(Workflow):
@@ -69,6 +79,7 @@ def crop_grid(image_bytes, columns, rows):
 WORKFLOW_CLASSES = {
     "icon": IconWorkflow,
     "block": BlockWorkflow,
+    "isometric_native": IsometricNativeWorkflow,
     "spritesheet": SpriteSheetWorkflow,
     "ground_atlas": GroundAtlasWorkflow
 }

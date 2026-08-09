@@ -1,13 +1,18 @@
-from generate.asset import IconAsset, BlockAsset, SpriteSheetAsset, GroundAtlasAsset
+from generate.asset import IconAsset, BlockAsset, SpriteSheetAsset, GroundAtlasAsset, IsometricBlockAsset, NativeIsometricBlockAsset
+
 
 ASSET_CLASSES = {
     "icon": IconAsset,
     "block": BlockAsset,
     "spritesheet": SpriteSheetAsset,
-    "ground_atlas": GroundAtlasAsset
+    "ground_atlas": GroundAtlasAsset,
+    "isometric": NativeIsometricBlockAsset,
+    "isometric_composite": IsometricBlockAsset
 }
 
 KEYWORDS = {
+    "composite": "isometric_composite",
+    "isometric": "isometric",
     "block":"block",
     "spritesheet": "spritesheet",
     "atlas": "ground_atlas",

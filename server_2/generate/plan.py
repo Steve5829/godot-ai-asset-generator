@@ -13,4 +13,5 @@ class Plan:
     reference_mode : str = "none"
     reference_image: str|None = None
     snap_colors: int = 0
+    compose_mode: str = "two_face"
     

@@ -1,9 +1,10 @@
-import requests, base64
+import requests, base64, time
 from config import PIXELLAB_API_KEY, OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_IMAGE_MODEL, OPENAI_IMAGE_QUALITY
 import io
 from PIL import Image
 
 PIXELLAB_STYLE_STRENGTH = 45
+PIXELLAB_V2 = "https://api.pixellab.ai/v2"
 
 class Provider:
     def generate(self, plan, description = None):
@@ -59,6 +60,36 @@ class GPTProvider(Provider):
         encoded = payload["data"][0]["b64_json"]
         raw = base64.b64decode(encoded)
         return resize_png(raw, plan.width, plan.height)
+
+
+def generate_isometric_tile(description, width, height, timeout_s=120, poll_s=3):
+    # PixelLab v2 native isometric block: one call renders a finished cube
+    # (top/side geometry handled server-side), returned via an async job.
+    if not PIXELLAB_API_KEY:
+        raise ValueError("PIXELLAB_API_KEY not set")
+    headers = {"Authorization": "Bearer " + PIXELLAB_API_KEY}
+    body = {"description": description, "image_size": {"width": width, "height": height}}
+    started = requests.post(PIXELLAB_V2 + "/create-isometric-tile",
+                            headers=headers, json=body, timeout=(10, 60))
+    started.raise_for_status()
+    job_id = started.json()["background_job_id"]
+
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        job = requests.get(f"{PIXELLAB_V2}/background-jobs/{job_id}",
+                           headers=headers, timeout=(10, 60))
+        job.raise_for_status()
+        payload = job.json()
+        status = payload.get("status")
+        if status == "completed":
+            encoded = payload["last_response"]["image"]["base64"]
+            if encoded.startswith("data:"):
+                encoded = encoded.split(",", 1)[1]
+            return base64.b64decode(encoded)
+        if status == "failed":
+            raise ValueError("PixelLab isometric job failed")
+        time.sleep(poll_s)
+    raise TimeoutError("PixelLab isometric job timed out")
 
 
 def encode_style_image(path, width, height):
