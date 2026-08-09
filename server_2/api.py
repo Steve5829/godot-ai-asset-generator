@@ -89,3 +89,7 @@ def modify(body: ModifyBody):
         }
     except Exception as exc:
         return {"status": "error", "message": str(exc)}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)

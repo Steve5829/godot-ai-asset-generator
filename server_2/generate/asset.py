@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from generate.plan import Plan
 from generate.prompt import build_face_description
+from generate.style import block_layout
 from reference.select import select_reference
 from reference.analyze import analyze_reference
 from text import tokens, slug
@@ -13,6 +14,7 @@ def _material(entry):
     front = entry.get("front", fill)
     return {
         "keywords": entry["keywords"],
+        "uniform": not any(face in entry for face in ("top", "front", "side")),
         "top": entry.get("top", fill),
         "front": front,
         "side": entry.get("side", front),
@@ -33,6 +35,7 @@ class Asset:
     reference_mode = "none"
     snap_colors = 0
     compose_mode = "two_face"
+    deoutline = None
     def build_plan(self, request):
         description = request.prompt
         reference_image = None
@@ -59,7 +62,9 @@ class Asset:
             reference_mode = self.reference_mode,
             reference_image = reference_image,
             snap_colors = self.snap_colors,
-            compose_mode = self.compose_mode
+            compose_mode = self.compose_mode,
+            deoutline = self.deoutline,
+            block_layout = block_layout(request.style)
         )
     def faces_for(self, request):
         return None
@@ -77,10 +82,15 @@ class BlockAsset(Asset):
     block_faces = ("top", "front")
     def faces_for(self, request):
         material = match_material(request.prompt)
-        if not material:
+        if not material or material["uniform"]:
             return None
         return {face: build_face_description(request.prompt, material, face, request.width, request.height)
                 for face in self.block_faces}
+    def describe(self, request, description):
+        material = match_material(request.prompt)
+        if not material or not material["uniform"]:
+            return description
+        return build_face_description(request.prompt, material, self.block_faces[0], request.width, request.height)
 
 class IsometricBlockAsset(BlockAsset):
     compose_mode = "isometric"

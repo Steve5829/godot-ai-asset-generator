@@ -1,8 +1,11 @@
 import io
-from PIL import Image
+from PIL import Image, ImageEnhance
+from generate.style import DEFAULT_LAYOUT
+
+TWO_FACE_SHADE = {"top": 1.0, "front": 0.82}
 
 class Composer:
-    def compose(self, faces):         
+    def compose(self, faces, layout=DEFAULT_LAYOUT):
         raise NotImplementedError
 
 
@@ -10,15 +13,25 @@ def load(face_bytes):
     return Image.open(io.BytesIO(face_bytes)).convert("RGBA")
 
 
+def fit(image, width, height):
+    return image.resize((width, height), Image.NEAREST)
+
+
+def shade(image, factor):
+    r, g, b, a = image.split()
+    rgb = ImageEnhance.Brightness(Image.merge("RGB", (r, g, b))).enhance(factor)
+    return Image.merge("RGBA", (*rgb.split(), a))
+
+
 class TwoFaceComposer(Composer):
     faces = ("top", "front")
-    def compose(self, faces):
-        top = load(faces["top"])     
-        front = load(faces["front"])     
-        width = top.width
-        canvas = Image.new("RGBA", (width, top.height + front.height), (0, 0, 0, 255))
+    def compose(self, faces, layout=DEFAULT_LAYOUT):
+        width = layout["width"]
+        top = shade(fit(load(faces["top"]), width, layout["top"]), TWO_FACE_SHADE["top"])
+        front = shade(fit(load(faces["front"]), width, layout["front"]), TWO_FACE_SHADE["front"])
+        canvas = Image.new("RGBA", (width, layout["top"] + layout["front"]), (0, 0, 0, 255))
         canvas.paste(top, (0, 0))
-        canvas.paste(front, (0, top.height))
+        canvas.paste(front, (0, layout["top"]))
         buf = io.BytesIO()
         canvas.save(buf, format="PNG")
         return buf.getvalue()
@@ -26,8 +39,8 @@ class TwoFaceComposer(Composer):
 
 class IsometricComposer(Composer):
     faces = ("top", "front", "side")
-    def compose(self, faces):
-        f = load(faces["top"]).width     
+    def compose(self, faces, layout=DEFAULT_LAYOUT):
+        f = layout["width"]
         top   = load(faces["top"]).resize((f, f), Image.NEAREST)
         front = load(faces["front"]).resize((f, f), Image.NEAREST)
         side  = load(faces["side"]).resize((f, f), Image.NEAREST)

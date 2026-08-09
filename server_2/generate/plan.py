@@ -14,4 +14,6 @@ class Plan:
     reference_image: str|None = None
     snap_colors: int = 0
     compose_mode: str = "two_face"
+    deoutline: dict|None = None
+    block_layout: dict|None = None
     

@@ -1,7 +1,10 @@
 from pathlib import Path
 from generate.postprocess import snap_palette
+from generate.deoutline import deoutline
 
 def save_image (image, plan, role, suffix=""):
+    if plan.deoutline:
+        image = deoutline(image, **plan.deoutline)
     if plan.snap_colors:
         image = snap_palette(image, plan.snap_colors)
     folder = plan.output_folder

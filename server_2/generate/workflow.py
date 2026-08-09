@@ -24,7 +24,7 @@ class BlockWorkflow(Workflow):
         else:
             shared = provider.generate(plan)          
             parts = {name: shared for name in names}      
-        composed = composer.compose(parts)
+        composed = composer.compose(parts, plan.block_layout)
         record = save_image(composed, plan, role="block_texture")
         return [record]
 
