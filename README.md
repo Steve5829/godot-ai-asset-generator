@@ -52,15 +52,15 @@ active branch; `v0` and `v1` are kept for reference.
 
 ### v0 — prototype
 
-The first working version. A single `server/server.py` (~750 lines) exposes the
-three workflows — generate, modify, automate — planning through an OpenAI-compatible
+The first working version. A single `server/server.py` exposes the three workflows
+— generate, modify, automate — planning through an OpenAI-compatible
 model and generating with PixelLab. No style system yet: no style packs, no
 reference images, no tests. The smallest, clearest read of the core idea.
 
 ### v1 — style modeling
 
-The style-fidelity era. `server/server.py` grows to ~2762 lines and gains a full
-style layer: per-game style packs (`server/packs/*.json`), reference images, data
+The style-fidelity era. `server/server.py` grows into a full style layer: per-game
+style packs (`server/packs/*.json`), reference images, data
 tables, evaluation cases, plan snapshots, and planner / reference tests.
 Feature-complete, with room to improve the structure.
 
