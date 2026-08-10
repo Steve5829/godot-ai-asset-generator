@@ -243,11 +243,6 @@ __pycache__/
 
 server/downscale_targets.py
 
-# Custom test files / directories
-test_compose.py
-test_generate.py
-test_router.py
-test_save.py
 
 # upscale script for md
 upscale_display.py

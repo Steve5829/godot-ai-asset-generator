@@ -5,6 +5,7 @@ from generate.pipeline import Pipeline
 from generate.provider import PROVIDER_CLASSES
 from automate.planner import plan_actions
 from reference.select import list_styles
+from text import label
 from pathlib import Path
 from PIL import Image
 from modify.plan import plan_modification
@@ -58,8 +59,8 @@ def automate(body: AutomateBody):
 @app.get("/vibe/options")
 def options():
     return {
-        "providers": list(PROVIDER_CLASSES),
-        "styles": list_styles()
+        "providers": [{"value": key, "label": label(key)} for key in PROVIDER_CLASSES],
+        "styles": [{"value": name, "label": label(name)} for name in list_styles()]
     }
 class ModifyBody(BaseModel):
     prompt: str

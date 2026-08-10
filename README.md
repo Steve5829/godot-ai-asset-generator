@@ -17,6 +17,7 @@ model and generates pixel art through PixelLab (or GPT Image).
   - [How blocks are composed](#how-blocks-are-composed)
   - [Providers](#providers)
 - [Generation approaches and evolution](#generation-approaches-and-evolution)
+- [Branches](#branches)
 - [Adding a new game style](#adding-a-new-game-style)
 - [Repository layout](#repository-layout)
 - [Setup](#setup)
@@ -182,6 +183,42 @@ To compare approaches, use the same prompt and style and generate once per mode:
 
 The backend logs `mode: xxx` on every request so you can record which method each
 image used.
+
+## Branches
+
+The project is developed as three branches, each a distinct stage. `v2` is the
+active branch; `v0` and `v1` are kept for reference.
+
+### v0 — prototype
+
+The first working version. A single `server/server.py` (~750 lines) exposes the
+three workflows — generate, modify, automate — planning through an OpenAI-compatible
+model and generating with PixelLab. There is no style system yet: no style packs,
+no reference images, no tests. This branch is the smallest, clearest read of the
+core idea.
+
+### v1 — style modeling
+
+The style-fidelity era. `server/server.py` grows to ~2762 lines and gains a full
+style layer: per-game **style packs** (`server/packs/*.json`), **reference images**,
+data tables, evaluation cases (`eval_cases.json`), plan snapshots, and planner /
+reference tests. A single `server.py` handles planning, provider calls,
+composition, and post-processing — feature-complete, with room to improve the
+structure.
+
+Both v0 and v1 carry `server/experiment.py`, an **offline style-benchmark runner**.
+It generates an item × style matrix (every test item rendered in every style) so
+the output could be compared side by side while tuning style profiles. It is a
+research tool, not part of the running plugin — in v1 it is guarded off and exits
+immediately unless the benchmark symbols it depends on are restored in
+`style_matrix.py`.
+
+### v2 — modular rewrite
+
+The current branch. The v1 `server/` is kept intact for reference, and a new
+`server_2/` reimplements the same behavior as a small, polymorphic pipeline —
+one pipeline, dict dispatch instead of `if/elif`, data resolved once at load.
+See [server_2/README.md](server_2/README.md) for its structure and usage.
 
 ## Adding a new game style
 
