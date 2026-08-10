@@ -40,8 +40,10 @@ Request  ──►  route()  ──►  Asset.build_plan()  ──►  Provider 
   - `isometric_native` — PixelLab's native isometric tile endpoint.
   - `spritesheet` / `ground_atlas` — generate a sheet, then slice it into cells.
 - **Composer** (`generate/composer.py`) — stitches faces into a block texture.
-- **postprocess / save** (`generate/postprocess.py`, `generate/save.py`) — palette snap
-  and write the PNG(s), returning output records for the plugin.
+- **postprocess / save** (`generate/save.py`) — optional per-asset cleanup, then write
+  the PNG(s) and return output records. Cleanup steps are opt-in via the `Plan`:
+  palette snap (`generate/postprocess.py`) and black-outline removal
+  (`generate/deoutline.py`).
 
 ## Layout
 
@@ -59,10 +61,12 @@ server_2/
     provider.py     PixellabProvider / GPTProvider
     workflow.py     Icon / Block / Slice workflows
     composer.py     two-face and isometric composition
-    postprocess.py  image cleanup (palette snap, ...)
+    style.py        per-style block layout (face proportions)
+    postprocess.py  palette snap
+    deoutline.py    optional black-outline removal
     save.py         write outputs
     pipeline.py     the one pipeline
-    data/           materials.json, block_prompt.json
+    data/           materials.json, block_prompt.json, styles.json
   reference/        style/reference image selection + vision analysis
   automate/         editor automation planner
   modify/           geometric transforms (resize / aspect / rotate)
