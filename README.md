@@ -1,5 +1,7 @@
 # Godot Vibe Plugin
 
+> ✅ **Current branch (v2)** — the latest version. Earlier stages: [`v1`](../../tree/v1) · [`v0`](../../tree/v0).
+
 An AI-powered editor automation tool for Godot, powered by pocketpy.
 
 Godot Vibe Plugin brings prompt-driven asset generation, asset modification, and
