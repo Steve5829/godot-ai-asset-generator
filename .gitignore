@@ -242,8 +242,7 @@ __pycache__/
 .env
 
 server/downscale_targets.py
-
-
+FINAL_REPORT.md
 # upscale script for md
 upscale_display.py
 .DS_Store
