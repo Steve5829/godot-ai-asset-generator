@@ -5,13 +5,16 @@ signal succeeded(payload: Dictionary)
 signal failed(message: String)
 signal options_loaded(styles, providers)
 
-const BACKEND_URL := "http://127.0.0.1:8000/vibe"
+const SETTING_URL := "vibe_agent/server_url"
+const DEFAULT_URL := "http://127.0.0.1:8000/vibe"
 
+var _base_url := DEFAULT_URL
 var _http: HTTPRequest
 var _options_http: HTTPRequest
 
 
 func _ready():
+	_base_url = _resolve_base_url()
 	_http = HTTPRequest.new()
 	_http.timeout = 180.0
 	add_child(_http)
@@ -23,12 +26,22 @@ func _ready():
 	_options_http.request_completed.connect(_on_options_completed)
 
 
+func _resolve_base_url() -> String:
+	if not ProjectSettings.has_setting(SETTING_URL):
+		ProjectSettings.set_setting(SETTING_URL, DEFAULT_URL)
+		ProjectSettings.set_initial_value(SETTING_URL, DEFAULT_URL)
+		ProjectSettings.add_property_info({"name": SETTING_URL, "type": TYPE_STRING})
+		ProjectSettings.save()
+	var value := String(ProjectSettings.get_setting(SETTING_URL, DEFAULT_URL)).strip_edges()
+	return value if not value.is_empty() else DEFAULT_URL
+
+
 func send(endpoint: String, payload: Dictionary):
 	if _http.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
 		failed.emit("a request is already in flight")
 		return
 	var error := _http.request(
-		BACKEND_URL + "/" + endpoint,
+		_base_url + "/" + endpoint,
 		PackedStringArray(["Content-Type: application/json"]),
 		HTTPClient.METHOD_POST,
 		JSON.stringify(payload)
@@ -39,7 +52,7 @@ func send(endpoint: String, payload: Dictionary):
 
 func fetch_options():
 	if _options_http.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		_options_http.request(BACKEND_URL + "/options")
+		_options_http.request(_base_url + "/options")
 
 
 func _on_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):

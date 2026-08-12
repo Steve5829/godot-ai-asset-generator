@@ -84,18 +84,25 @@ OpenAI-compatible provider.
 pip install -r server_2/requirements.txt
 ```
 
-Create `server_2/.env`:
+Create `server_2/.env` (copy `server_2/.env.example`):
 
 ```dotenv
 PIXELLAB_API_KEY=your-pixellab-api-key
 OPENAI_API_KEY=your-openai-api-key
+OPENAI_API_BASE=https://api.openai.com/v1
+OPENAI_IMAGE_MODEL=gpt-image-1
+OPENAI_VISION_MODEL=gpt-4o-mini
+VIBE_HOST=0.0.0.0
 ```
 
-Run the backend (serves `http://127.0.0.1:8000`), then enable the plugin in Godot:
+Run the backend (binds `VIBE_HOST`, port 8000), then enable the plugin in Godot:
 
 ```bash
 cd server_2 && python api.py
 ```
+
+The plugin's server address is configurable in **Project Settings → `vibe_agent/server_url`**
+(default `http://127.0.0.1:8000/vibe`); point it at wherever the backend runs.
 
 ## Usage
 
