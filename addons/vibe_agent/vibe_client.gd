@@ -6,7 +6,7 @@ signal failed(message: String)
 signal options_loaded(styles, providers)
 
 const SETTING_URL := "vibe_agent/server_url"
-const DEFAULT_URL := "http://127.0.0.1:8000/vibe"
+const DEFAULT_URL := "http://127.0.0.1:1103/vibe"
 
 var _base_url := DEFAULT_URL
 var _http: HTTPRequest

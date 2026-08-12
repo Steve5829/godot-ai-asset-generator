@@ -10,3 +10,4 @@ OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL") or "gpt-4o-mini"
 OPENAI_IMAGE_MODEL = os.getenv("OPENAI_IMAGE_MODEL") or "gpt-image-1"
 OPENAI_IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY") or "medium"
 VIBE_HOST = os.getenv("VIBE_HOST") or "0.0.0.0"
+VIBE_PORT = int(os.getenv("VIBE_PORT") or "1103")

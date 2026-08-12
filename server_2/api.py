@@ -93,5 +93,5 @@ def modify(body: ModifyBody):
 
 if __name__ == "__main__":
     import uvicorn
-    from config import VIBE_HOST
-    uvicorn.run(app, host=VIBE_HOST, port=8000)
+    from config import VIBE_HOST, VIBE_PORT
+    uvicorn.run(app, host=VIBE_HOST, port=VIBE_PORT)

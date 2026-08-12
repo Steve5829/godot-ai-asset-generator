@@ -23,7 +23,7 @@ runs one pipeline and writes PNG(s) into the chosen `res://` folder.
 Godot editor (right-click)
    │  prompt + context (style, provider)
    ▼
-POST http://127.0.0.1:8000/vibe/{generate|modify|automate}
+POST http://127.0.0.1:1103/vibe/{generate|modify|automate}
    ▼
 route → build_plan → provider → workflow → save
    ▼
@@ -93,16 +93,17 @@ OPENAI_API_BASE=https://api.openai.com/v1
 OPENAI_IMAGE_MODEL=gpt-image-1
 OPENAI_VISION_MODEL=gpt-4o-mini
 VIBE_HOST=0.0.0.0
+VIBE_PORT=1103
 ```
 
-Run the backend (binds `VIBE_HOST`, port 8000), then enable the plugin in Godot:
+Run the backend (binds `VIBE_HOST:VIBE_PORT`), then enable the plugin in Godot:
 
 ```bash
 cd server_2 && python api.py
 ```
 
 The plugin's server address is configurable in **Project Settings → `vibe_agent/server_url`**
-(default `http://127.0.0.1:8000/vibe`); point it at wherever the backend runs.
+(default `http://127.0.0.1:1103/vibe`); point it at wherever the backend runs.
 
 ## Usage
 
