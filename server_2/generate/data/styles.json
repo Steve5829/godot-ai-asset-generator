@@ -1,0 +1,5 @@
+{
+  "default": {"width": 16, "top": 16, "front": 16, "side": 16},
+  "core_keeper": {"width": 32, "top": 16, "front": 32},
+  "terraria": {"width": 32, "top": 16, "front": 32}
+}

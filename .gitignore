@@ -227,13 +227,24 @@ server/logs/
 *.jpeg.import
 *.webp.import
 
+!md/images/
+!md/images/**/*.png
+
 # Reference image dataset should be versioned so clones can use it.
-!server/reference_images/
-!server/reference_images/**/
-!server/reference_images/**/*.png
-!server/reference_images/**/*.jpg
-!server/reference_images/**/*.jpeg
-!server/reference_images/**/*.webp
+!server_2/reference_images/
+!server_2/reference_images/**/
+!server_2/reference_images/**/*.png
+!server_2/reference_images/**/*.jpg
+!server_2/reference_images/**/*.jpeg
+!server_2/reference_images/**/*.webp
 
 __pycache__/
 .env
+
+server/downscale_targets.py
+FINAL_REPORT.md
+# upscale script for md
+upscale_display.py
+.DS_Store
+
+
